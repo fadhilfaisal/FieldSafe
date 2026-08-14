@@ -1,0 +1,207 @@
+import { AlertTriangle, ArrowLeft, Check, ClipboardCheck, Send, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router'
+import { useAuth } from '../../auth/useAuth'
+import { Button } from '../../components/common/Button'
+import { Card } from '../../components/common/Card'
+import { EmptyState } from '../../components/common/EmptyState'
+import { SeverityBadge } from '../../components/common/SeverityBadge'
+import { LoadingState } from '../../components/feedback/LoadingState'
+import { SignaturePad } from '../../components/inspection/SignaturePad'
+import { EvidencePreview } from '../../components/inspection/EvidencePreview'
+import type { EquipmentStatus, SignatureData } from '../../domain/models'
+import {
+  inspectionService,
+  validateInspectionDraft,
+  type InspectionWorkspace,
+} from '../../services/inspectionService'
+
+interface ReviewState {
+  workspace: InspectionWorkspace
+  resultingEquipmentStatus: EquipmentStatus
+}
+
+export function InspectionReviewPage() {
+  const { id } = useParams()
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [state, setState] = useState<ReviewState | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [signatureError, setSignatureError] = useState('')
+
+  async function load(silent = false) {
+    if (!id || !user) return
+    if (!silent) setLoading(true)
+    try {
+      setState(await inspectionService.getReviewSummary(id, user.id))
+      setError('')
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load inspection review.')
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void load()
+    // The route identity is the review resource boundary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, user?.id])
+
+  async function saveSignature(signature: SignatureData | null) {
+    if (!id || !user) return
+    await inspectionService.saveSignature(id, user.id, signature)
+    setSignatureError('')
+    await load(true)
+  }
+
+  async function submit() {
+    if (!id || !user || !state) return
+    const validation = validateInspectionDraft(
+      state.workspace.items,
+      state.workspace.draft,
+      true,
+    )
+    if (!validation.isSubmittable) {
+      setSignatureError(validation.signatureError ?? 'Checklist details are incomplete.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await inspectionService.submitInspection(id, user.id)
+      navigate(`/inspector/inspection/${id}/result`, { replace: true })
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Inspection submission failed.')
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) return <LoadingState label="Preparing inspection review…" />
+  if (error || !state) {
+    return (
+      <Card>
+        <EmptyState icon={ClipboardCheck} title="Review unavailable" description={error || 'Inspection not found.'} />
+      </Card>
+    )
+  }
+
+  const { workspace, resultingEquipmentStatus } = state
+  const draftResponses = workspace.draft?.responses ?? []
+  const passed = draftResponses.filter((response) => response.result === 'Pass')
+  const failed = draftResponses.filter((response) => response.result === 'Fail')
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-5">
+      <button
+        type="button"
+        onClick={() => navigate(`/inspector/inspection/${id}`)}
+        className="inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-bold text-brand-700 hover:text-brand-600"
+      >
+        <ArrowLeft aria-hidden="true" className="size-4" />
+        Back to checklist
+      </button>
+
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{workspace.equipment.assetCode} · {workspace.equipment.name}</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Review & Sign</h1>
+        <p className="mt-2 text-sm text-slate-600">Confirm all responses before submitting this inspection.</p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-bold text-slate-950">{workspace.items.length}</p>
+          <p className="mt-1 text-xs text-slate-500">Checklist Items</p>
+        </Card>
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-bold text-success-700">{passed.length}</p>
+          <p className="mt-1 text-xs text-slate-500">Passed</p>
+        </Card>
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-bold text-danger-700">{failed.length}</p>
+          <p className="mt-1 text-xs text-slate-500">Failed</p>
+        </Card>
+      </div>
+
+      {resultingEquipmentStatus === 'Out of Service' ? (
+        <div className="flex items-start gap-3 rounded-xl border border-danger-100 bg-danger-50 p-4 text-danger-700" role="alert">
+          <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+          <p className="text-sm font-bold leading-6">
+            Submitting this inspection will place {workspace.equipment.assetCode} OUT OF SERVICE.
+          </p>
+        </div>
+      ) : resultingEquipmentStatus === 'Restricted' ? (
+        <div className="flex items-start gap-3 rounded-xl border border-warning-100 bg-warning-50 p-4 text-warning-800">
+          <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+          <p className="text-sm font-bold leading-6">
+            Submitting this inspection will place {workspace.equipment.assetCode} in RESTRICTED status.
+          </p>
+        </div>
+      ) : null}
+
+      <Card className="overflow-hidden">
+        <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+          <h2 className="text-sm font-bold text-slate-950">Checklist summary</h2>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {workspace.items.map((item) => {
+            const response = draftResponses.find((candidate) => candidate.checklistItemId === item.id)!
+            return (
+              <div key={item.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                <span className="text-sm font-medium text-slate-700">{item.sequence}. {item.category}</span>
+                <span className={response.result === 'Pass' ? 'inline-flex items-center gap-1 text-xs font-bold text-success-700' : 'inline-flex items-center gap-1 text-xs font-bold text-danger-700'}>
+                  {response.result === 'Pass' ? <Check className="size-4" /> : <X className="size-4" />}
+                  {response.result}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+
+      {failed.length > 0 ? (
+        <section className="space-y-3" aria-labelledby="defect-summary-title">
+          <h2 id="defect-summary-title" className="text-lg font-bold text-slate-950">Defect summary</h2>
+          {failed.map((response) => {
+            const item = workspace.items.find((candidate) => candidate.id === response.checklistItemId)!
+            return (
+              <Card key={response.checklistItemId} className="overflow-hidden">
+                <div className="flex items-center justify-between gap-3 border-b border-danger-100 bg-danger-50 px-4 py-3">
+                  <p className="text-sm font-bold text-danger-700">{item.category}</p>
+                  <SeverityBadge severity={response.defect!.severity!} />
+                </div>
+                <div className="grid gap-4 p-4 sm:grid-cols-[1fr_8rem]">
+                  <div>
+                    <p className="text-sm leading-6 text-slate-700">{response.defect!.description}</p>
+                    <p className="mt-2 text-xs font-semibold text-slate-500">Evidence: {response.defect!.evidenceReference?.label}</p>
+                  </div>
+                  <EvidencePreview
+                    evidence={response.defect!.evidenceReference!}
+                    alt="Attached defect evidence"
+                    className="h-24 w-full rounded-lg object-cover sm:h-20"
+                  />
+                </div>
+              </Card>
+            )
+          })}
+        </section>
+      ) : null}
+
+      <Card className="p-5">
+        <h2 className="text-lg font-bold text-slate-950">Inspector signature</h2>
+        <p className="mt-1 text-sm text-slate-600">Draw your signature to confirm this inspection record.</p>
+        <div className="mt-4">
+          <SignaturePad value={workspace.draft?.signature ?? null} onChange={(signature) => void saveSignature(signature)} />
+        </div>
+        {signatureError ? <p className="mt-3 text-sm font-semibold text-danger-700" role="alert">{signatureError}</p> : null}
+      </Card>
+
+      <Button variant={failed.length > 0 ? 'danger' : 'primary'} size="lg" className="w-full" onClick={() => void submit()} disabled={submitting}>
+        <Send aria-hidden="true" className="size-5" />
+        {submitting ? 'Submitting inspection…' : 'Submit Inspection'}
+      </Button>
+    </div>
+  )
+}

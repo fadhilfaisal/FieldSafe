@@ -11,6 +11,8 @@
   --color-brand-700: #0b4da2;
   --color-brand-600: #0f62c9;
   --color-brand-500: #2778dc;
+  --color-brand-300: #93c5fd;
+  --color-brand-200: #bfdbfe;
   --color-brand-100: #dbeafe;
   --color-brand-50: #eff6ff;
 
@@ -27,6 +29,7 @@
   --color-danger-700: #b91c1c;
   --color-danger-600: #dc2626;
   --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
   --color-danger-50: #fef2f2;
 
   --color-slate-25: #fbfcfd;

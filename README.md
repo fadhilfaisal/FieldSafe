@@ -4,7 +4,7 @@ FieldSafe is a static React prototype foundation for field inspection and equipm
 
 ## Current scope
 
-The application currently includes its visual foundation, typed operational domain data, deterministic demo records, repository contracts, device-local browser persistence, and simulated role-based authentication. It intentionally contains no production authentication, product workflows, scanning, offline synchronization, analytics, or API integration.
+The application currently includes its visual foundation, typed operational domain data, deterministic demo records, repository contracts, device-local browser persistence, simulated role-based authentication, and the end-to-end Inspector inspection workflow. It intentionally contains no production authentication, production scanning or camera capture, offline synchronization, Supervisor/Manager/Gate workflows, analytics, or API integration.
 
 ## Architecture direction
 
@@ -30,12 +30,22 @@ UI → service/domain logic → repository contracts → browser-storage adapter
 - `src/storage` — JSON browser-storage adapter and storage-driver boundary
 - `src/services` — application initialization and demo reset entry points
 - `src/auth` — demo credentials, authentication service, session store, context, and route guards
+- `src/services/inspectionService.ts` — Inspector queue, draft validation, domain orchestration, and atomic submission
+- `src/components/inspection` — reusable work-card, checklist, defect, evidence, progress, and signature components
 
 ## Demo authentication
 
 Interactive seeded users can sign in from `/login` with the shared password `demo123`. The two Inspectors, Supervisor, and Manager are available in the on-screen Demo Accounts list. The seeded Technician remains a supporting data actor and cannot sign in to an application workspace.
 
 Logout clears only `fieldsafe:session:v1`; operational data is preserved. Resetting operational demo data does not clear a valid session because deterministic user IDs remain stable.
+
+## Inspector workflow
+
+Each Inspector has two deterministic assigned inspections. Starting an assignment proceeds through simulated scan, repository-resolved equipment confirmation, its equipment-specific checklist, progressive defect capture, review, signature, submission, and a persisted result. Inspector History shows completed records for the active Inspector.
+
+In-progress responses, defect details, evidence references, and normalized signature strokes are persisted as operational inspection drafts. Submission validates the draft, calculates PASS/FAIL, creates relational checklist responses and defects, derives equipment state through the canonical safety helper, and commits the records in one repository write. The operational storage schema migrates existing version-one data in place while retaining the established `fieldsafe:operational-data:v1` storage key.
+
+Photo evidence is simulated with the project-local `/evidence/hydraulic-hose-damage.png` asset. Operational storage contains only its small reference object, never image bytes.
 
 ## Scripts
 

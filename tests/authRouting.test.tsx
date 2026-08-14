@@ -76,7 +76,7 @@ describe('authentication routing', () => {
       email: 'arjun.nair@fieldsafe.demo',
       role: 'Inspector',
       landingPath: '/inspector',
-      heading: 'Inspector Home',
+      heading: 'Good day, Arjun',
     },
     {
       email: 'priya.sharma@fieldsafe.demo',
@@ -146,7 +146,7 @@ describe('authentication routing', () => {
     })
     const router = renderAt('/supervisor/reviews', service)
 
-    await screen.findByRole('heading', { name: 'Inspector Home' })
+    await screen.findByRole('heading', { name: 'Good day, Arjun' })
     expect(router.state.location.pathname).toBe('/inspector')
   })
 

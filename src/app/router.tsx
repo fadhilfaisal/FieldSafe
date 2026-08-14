@@ -22,6 +22,8 @@ import {
   InspectorHistoryPage,
   InspectorHomePage,
   InspectorInspectionPage,
+  InspectionReviewPage,
+  InspectionResultPage,
   InspectorScanPage,
 } from '../pages/inspector/InspectorPages'
 import {
@@ -70,6 +72,8 @@ export const appRoutes: RouteObject[] = [
           { path: 'scan', element: <InspectorScanPage /> },
           { path: 'equipment/:id', element: <InspectorEquipmentPage /> },
           { path: 'inspection/:id', element: <InspectorInspectionPage /> },
+          { path: 'inspection/:id/review', element: <InspectionReviewPage /> },
+          { path: 'inspection/:id/result', element: <InspectionResultPage /> },
           { path: 'history', element: <InspectorHistoryPage /> },
         ],
       },

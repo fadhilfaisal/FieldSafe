@@ -3,9 +3,11 @@ import {
   createFieldSafeSeedData,
   SEED_REFERENCE_DATE,
 } from '../src/data/seed/fieldSafeSeed'
+import { DEMO_EVIDENCE_PUBLIC_URL } from '../src/domain/evidence'
 import { deriveEquipmentStatus, isCorrectiveActionOverdue } from '../src/domain/safety'
 import {
   BrowserFieldSafeRepository,
+  OPERATIONAL_DATA_SCHEMA_VERSION,
   type PersistedOperationalData,
 } from '../src/repositories/browserFieldSafeRepository'
 import { BrowserStorageAdapter } from '../src/storage/browserStorageAdapter'
@@ -49,7 +51,12 @@ describe('deterministic FieldSafe seed data', () => {
     const overdueCount = seed.correctiveActions.filter((action) =>
       isCorrectiveActionOverdue(action, SEED_REFERENCE_DATE),
     ).length
-    const inspectionTimes = seed.inspections.map((item) => Date.parse(item.completedAt))
+    const completedInspections = seed.inspections.filter(
+      (item) => item.completedAt !== null,
+    )
+    const inspectionTimes = completedInspections.map((item) =>
+      Date.parse(item.completedAt!),
+    )
 
     expect(seed.users).toHaveLength(5)
     expect(seed.equipment).toHaveLength(18)
@@ -58,7 +65,8 @@ describe('deterministic FieldSafe seed data', () => {
     )
     expect(seed.checklists).toHaveLength(5)
     expect(seed.checklistItems).toHaveLength(50)
-    expect(seed.inspections).toHaveLength(60)
+    expect(seed.inspections).toHaveLength(64)
+    expect(seed.inspections.filter((item) => item.status === 'Assigned')).toHaveLength(4)
     expect(seed.checklistResponses).toHaveLength(600)
     expect(passCount).toBe(48)
     expect(failCount).toBe(12)
@@ -94,6 +102,10 @@ describe('deterministic FieldSafe seed data', () => {
       expect(seed.users.some((item) => item.id === inspection.inspectorId)).toBe(true)
       const defects = seed.defects.filter((item) => item.inspectionId === inspection.id)
       expect(defects.length > 0).toBe(inspection.result === 'Fail')
+      if (inspection.status !== 'Completed') {
+        expect(inspection.result).toBeNull()
+        expect(inspection.completedAt).toBeNull()
+      }
     }
 
     for (const defect of seed.defects) {
@@ -144,6 +156,88 @@ describe('BrowserFieldSafeRepository persistence', () => {
 
     expect((await repository.getEquipment())[0].name).not.toBe(
       'Unpersisted Mutation',
+    )
+  })
+
+  it('migrates existing version-one operational data without changing its storage key', async () => {
+    const storage = new MemoryStorage()
+    const { adapter, repository } = createRepository(storage)
+    const legacy = structuredClone(createFieldSafeSeedData())
+    legacy.inspections = legacy.inspections
+      .filter((inspection) => inspection.status === 'Completed')
+      .map((inspection) => {
+        const record = { ...inspection } as Record<string, unknown>
+        delete record.assignedAt
+        delete record.dueAt
+        delete record.submittedAt
+        delete record.signature
+        return record as unknown as typeof inspection
+      })
+    legacy.defects = legacy.defects.map((defect) => {
+      const record = { ...defect } as Record<string, unknown>
+      delete record.evidenceReference
+      return record as unknown as typeof defect
+    })
+    delete (legacy as unknown as Record<string, unknown>).inspectionDrafts
+    adapter.write({ schemaVersion: 1, data: legacy })
+
+    await repository.initialize()
+
+    expect(adapter.read()?.schemaVersion).toBe(OPERATIONAL_DATA_SCHEMA_VERSION)
+    expect(
+      (await repository.getInspections()).filter(
+        (inspection) => inspection.status === 'Assigned',
+      ),
+    ).toHaveLength(4)
+    expect((await repository.getDefects())[0].evidenceReference).toBeNull()
+  })
+
+  it('normalizes stale persisted evidence references without resetting operational data', async () => {
+    const storage = new MemoryStorage()
+    const { adapter, repository } = createRepository(storage)
+    const persisted = createFieldSafeSeedData()
+    persisted.equipment[0].site = 'Persisted Custom Site'
+    persisted.defects[0].evidenceReference = {
+      id: 'demo-hydraulic-hose-damage',
+      label: 'Hydraulic hose damage',
+      assetPath: '/public/evidence/hydraulic-hose-damage.png',
+    }
+    persisted.inspectionDrafts = [
+      {
+        inspectionId: 'ASG-001',
+        responses: [
+          {
+            checklistItemId: 'CLI-MEWP-01',
+            result: 'Fail',
+            defect: {
+              description: 'Damaged hose',
+              severity: 'Major',
+              evidenceReference: {
+                id: 'demo-hydraulic-hose-damage',
+                label: 'Hydraulic hose damage',
+                assetPath: 'evidence/hydraulic-hose-damage.png',
+              },
+            },
+          },
+        ],
+        signature: null,
+        updatedAt: '2026-08-14T10:00:00.000Z',
+      },
+    ]
+    adapter.write({
+      schemaVersion: OPERATIONAL_DATA_SCHEMA_VERSION,
+      data: persisted,
+    })
+
+    expect((await repository.getDefects())[0].evidenceReference?.assetPath).toBe(
+      DEMO_EVIDENCE_PUBLIC_URL,
+    )
+    expect(
+      (await repository.getInspectionDraft('ASG-001'))?.responses[0].defect
+        ?.evidenceReference?.assetPath,
+    ).toBe(DEMO_EVIDENCE_PUBLIC_URL)
+    expect((await repository.getEquipment())[0].site).toBe(
+      'Persisted Custom Site',
     )
   })
 })

@@ -6,8 +6,16 @@ import type {
   Defect,
   Equipment,
   Inspection,
+  InspectionDraft,
   User,
 } from '../domain/models'
+
+export interface InspectionSubmissionPersistence {
+  inspection: Inspection
+  responses: ChecklistResponse[]
+  defects: Defect[]
+  equipment: Equipment
+}
 
 export interface FieldSafeRepository {
   initialize(): Promise<void>
@@ -19,8 +27,14 @@ export interface FieldSafeRepository {
   getChecklists(): Promise<Checklist[]>
   getChecklistItems(checklistId?: string): Promise<ChecklistItem[]>
   getChecklistResponses(inspectionId?: string): Promise<ChecklistResponse[]>
-  getDefects(): Promise<Defect[]>
+  getDefects(inspectionId?: string): Promise<Defect[]>
   getCorrectiveActions(): Promise<CorrectiveAction[]>
   saveEquipment(equipment: Equipment): Promise<Equipment>
+  saveInspection(inspection: Inspection): Promise<Inspection>
+  getInspectionDraft(inspectionId: string): Promise<InspectionDraft | null>
+  saveInspectionDraft(draft: InspectionDraft): Promise<InspectionDraft>
+  commitInspectionSubmission(
+    submission: InspectionSubmissionPersistence,
+  ): Promise<void>
   resetDemoData(): Promise<void>
 }

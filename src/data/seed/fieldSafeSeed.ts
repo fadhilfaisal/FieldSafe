@@ -1,4 +1,5 @@
 import { deriveEquipmentStatus } from '../../domain/safety'
+import { DEMO_EVIDENCE } from '../../domain/evidence'
 import type {
   Checklist,
   ChecklistItem,
@@ -210,6 +211,41 @@ function checklistForType(type: EquipmentType) {
   return checklist
 }
 
+export function createSeedAssignedInspections(
+  equipment: Equipment[],
+): Inspection[] {
+  const definitions = [
+    { id: 'ASG-001', equipmentId: 'EQ-014', inspectorId: 'USR-INSP-001', dueOffset: 0.25 },
+    { id: 'ASG-002', equipmentId: 'EQ-004', inspectorId: 'USR-INSP-001', dueOffset: 0.5 },
+    { id: 'ASG-003', equipmentId: 'EQ-018', inspectorId: 'USR-INSP-002', dueOffset: 0.35 },
+    { id: 'ASG-004', equipmentId: 'EQ-007', inspectorId: 'USR-INSP-002', dueOffset: 1 },
+  ]
+
+  return definitions.map((definition) => {
+    const assignedEquipment = equipment.find(
+      (item) => item.id === definition.equipmentId,
+    )
+    if (!assignedEquipment) {
+      throw new Error(`Missing assigned equipment ${definition.equipmentId}.`)
+    }
+
+    return {
+      id: definition.id,
+      equipmentId: assignedEquipment.id,
+      checklistId: assignedEquipment.checklistId,
+      inspectorId: definition.inspectorId,
+      status: 'Assigned',
+      result: null,
+      assignedAt: isoDaysFromReference(-1),
+      dueAt: isoDaysFromReference(definition.dueOffset),
+      startedAt: null,
+      completedAt: null,
+      submittedAt: null,
+      signature: null,
+    }
+  })
+}
+
 export function createFieldSafeSeedData(): OperationalData {
   const checklistItems = createChecklistItems()
   const equipment: Equipment[] = equipmentDefinitions.map((definition, index) => ({
@@ -238,6 +274,9 @@ export function createFieldSafeSeedData(): OperationalData {
     const failure = failureByInspection.get(index)
     const daysAgo = 1 + Math.floor((index * 88) / 59)
     const completedAt = isoDaysFromReference(-daysAgo, -(index % 7))
+    const startedAt = new Date(
+      Date.parse(completedAt) - 35 * 60_000,
+    ).toISOString()
     const inspectionId = `INS-${String(index + 1).padStart(3, '0')}`
     const failedItemIndex = failure ? index % items.length : -1
 
@@ -248,8 +287,12 @@ export function createFieldSafeSeedData(): OperationalData {
       inspectorId: index % 2 === 0 ? 'USR-INSP-001' : 'USR-INSP-002',
       status: 'Completed',
       result: failure ? 'Fail' : 'Pass',
-      startedAt: new Date(Date.parse(completedAt) - 35 * 60_000).toISOString(),
+      assignedAt: new Date(Date.parse(startedAt) - DAY_IN_MS).toISOString(),
+      dueAt: completedAt,
+      startedAt,
       completedAt,
+      submittedAt: completedAt,
+      signature: null,
     })
 
     items.forEach((item, itemIndex) => {
@@ -281,6 +324,7 @@ export function createFieldSafeSeedData(): OperationalData {
         title: `${item.category} condition requires attention`,
         description: `${inspectedEquipment.assetCode} failed the ${item.category.toLowerCase()} check during its scheduled inspection.`,
         severity: failure.severity,
+        evidenceReference: structuredClone(DEMO_EVIDENCE),
         status: failure.defectStatus,
         reportedAt: completedAt,
         resolvedAt,
@@ -302,10 +346,17 @@ export function createFieldSafeSeedData(): OperationalData {
     })
   }
 
+  inspections.push(...createSeedAssignedInspections(equipment))
+
   equipment.forEach((item) => {
     const latestInspection = inspections
-      .filter((inspection) => inspection.equipmentId === item.id)
-      .sort((a, b) => b.completedAt.localeCompare(a.completedAt))[0]
+      .filter(
+        (inspection) =>
+          inspection.equipmentId === item.id && inspection.completedAt !== null,
+      )
+      .sort((a, b) =>
+        (b.completedAt ?? '').localeCompare(a.completedAt ?? ''),
+      )[0]
     item.lastInspectionAt = latestInspection?.completedAt ?? null
     item.status = deriveEquipmentStatus(
       defects.filter((defect) => defect.equipmentId === item.id),
@@ -321,5 +372,6 @@ export function createFieldSafeSeedData(): OperationalData {
     checklistResponses,
     defects,
     correctiveActions,
+    inspectionDrafts: [],
   }
 }

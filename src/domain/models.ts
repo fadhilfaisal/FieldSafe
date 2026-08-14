@@ -46,8 +46,17 @@ export interface ChecklistItem {
   isCritical: boolean
 }
 
-export type InspectionStatus = 'Completed'
+export type InspectionStatus = 'Assigned' | 'In Progress' | 'Completed'
 export type InspectionResult = 'Pass' | 'Fail'
+
+export interface SignaturePoint {
+  x: number
+  y: number
+}
+
+export interface SignatureData {
+  strokes: SignaturePoint[][]
+}
 
 export interface Inspection {
   id: EntityId
@@ -55,9 +64,13 @@ export interface Inspection {
   checklistId: EntityId
   inspectorId: EntityId
   status: InspectionStatus
-  result: InspectionResult
-  startedAt: IsoDateTime
-  completedAt: IsoDateTime
+  result: InspectionResult | null
+  assignedAt: IsoDateTime
+  dueAt: IsoDateTime
+  startedAt: IsoDateTime | null
+  completedAt: IsoDateTime | null
+  submittedAt: IsoDateTime | null
+  signature: SignatureData | null
 }
 
 export type ChecklistResponseResult = 'Pass' | 'Fail' | 'Not Applicable'
@@ -68,6 +81,12 @@ export interface ChecklistResponse {
   checklistItemId: EntityId
   result: ChecklistResponseResult
   notes?: string
+}
+
+export interface EvidenceReference {
+  id: string
+  label: string
+  assetPath: string
 }
 
 export type DefectSeverity = 'Minor' | 'Major' | 'Critical'
@@ -82,9 +101,29 @@ export interface Defect {
   title: string
   description: string
   severity: DefectSeverity
+  evidenceReference: EvidenceReference | null
   status: DefectStatus
   reportedAt: IsoDateTime
   resolvedAt: IsoDateTime | null
+}
+
+export interface DraftDefect {
+  description: string
+  severity: DefectSeverity | null
+  evidenceReference: EvidenceReference | null
+}
+
+export interface DraftChecklistResponse {
+  checklistItemId: EntityId
+  result: Exclude<ChecklistResponseResult, 'Not Applicable'>
+  defect: DraftDefect | null
+}
+
+export interface InspectionDraft {
+  inspectionId: EntityId
+  responses: DraftChecklistResponse[]
+  signature: SignatureData | null
+  updatedAt: IsoDateTime
 }
 
 export type CorrectiveActionStatus = 'Open' | 'In Progress' | 'Done'
@@ -112,4 +151,5 @@ export interface OperationalData {
   checklistResponses: ChecklistResponse[]
   defects: Defect[]
   correctiveActions: CorrectiveAction[]
+  inspectionDrafts: InspectionDraft[]
 }

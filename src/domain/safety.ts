@@ -3,6 +3,7 @@ import type {
   Defect,
   EquipmentStatus,
   IsoDateTime,
+  DefectSeverity,
 } from './models'
 
 export function isCorrectiveActionOverdue(
@@ -13,13 +14,21 @@ export function isCorrectiveActionOverdue(
 }
 
 export function deriveEquipmentStatus(defects: Defect[]): EquipmentStatus {
-  const unresolved = defects.filter((defect) => defect.status !== 'Resolved')
+  return deriveEquipmentStatusFromSeverities(
+    defects
+      .filter((defect) => defect.status !== 'Resolved')
+      .map((defect) => defect.severity),
+  )
+}
 
-  if (unresolved.some((defect) => defect.severity === 'Critical')) {
+export function deriveEquipmentStatusFromSeverities(
+  severities: DefectSeverity[],
+): EquipmentStatus {
+  if (severities.includes('Critical')) {
     return 'Out of Service'
   }
 
-  if (unresolved.some((defect) => defect.severity === 'Major')) {
+  if (severities.includes('Major')) {
     return 'Restricted'
   }
 
