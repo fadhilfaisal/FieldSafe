@@ -6,6 +6,8 @@ import type {
   DefectSeverity,
 } from './models'
 
+export type GateDecision = 'Allowed' | 'Restricted' | 'Denied'
+
 export function isCorrectiveActionOverdue(
   action: CorrectiveAction,
   asOf: IsoDateTime = new Date().toISOString(),
@@ -33,6 +35,12 @@ export function deriveEquipmentStatusFromSeverities(
   }
 
   return 'Fit'
+}
+
+export function deriveGateDecision(status: EquipmentStatus): GateDecision {
+  if (status === 'Fit') return 'Allowed'
+  if (status === 'Restricted') return 'Restricted'
+  return 'Denied'
 }
 
 const severityRank: Record<DefectSeverity, number> = {
