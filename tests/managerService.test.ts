@@ -220,4 +220,73 @@ describe('Manager visibility service', () => {
 
     expect(flow.storage.getItem(STORAGE_KEY)).toBe(before)
   })
+
+  it('returns zero analytics for an empty operational dataset', async () => {
+    const flow = createServices()
+    await flow.repository.initialize()
+    const persisted = JSON.parse(flow.storage.getItem(STORAGE_KEY)!) as PersistedOperationalData
+    persisted.data.equipment = []
+    persisted.data.inspections = []
+    persisted.data.checklistResponses = []
+    persisted.data.defects = []
+    persisted.data.correctiveActions = []
+    flow.storage.setItem(STORAGE_KEY, JSON.stringify(persisted))
+
+    const [overview, compliance, defects, equipment] = await Promise.all([
+      flow.manager.getOverview(),
+      flow.manager.getComplianceAnalytics(),
+      flow.manager.getDefectAnalytics(),
+      flow.manager.getEquipmentBoard(),
+    ])
+
+    expect(overview).toMatchObject({
+      complianceRate: 0,
+      recentInspectionCount: 0,
+      openDefectCount: 0,
+      totalEquipmentCount: 0,
+      highestRiskEquipment: [],
+    })
+    expect(compliance).toMatchObject({
+      inspectionCount: 0,
+      passedCount: 0,
+      failedCount: 0,
+      complianceRate: 0,
+      trend: [],
+    })
+    expect(defects).toMatchObject({
+      totalDefects: 0,
+      unresolvedDefects: 0,
+      volumeTrend: [],
+      commonCategories: [],
+    })
+    expect(equipment).toEqual([])
+  })
+
+  it('degrades missing Manager detail relations without hiding the equipment', async () => {
+    const flow = createServices()
+    await flow.repository.initialize()
+    const persisted = JSON.parse(flow.storage.getItem(STORAGE_KEY)!) as PersistedOperationalData
+    persisted.data.checklists = persisted.data.checklists.filter(
+      (checklist) => checklist.id !== 'CHK-TRUCK-01',
+    )
+    persisted.data.users = persisted.data.users.filter(
+      (user) => user.id !== 'USR-TECH-001',
+    )
+    const defect = persisted.data.defects.find((item) => item.id === 'DEF-001')!
+    defect.inspectionId = 'MISSING-INSPECTION'
+    flow.storage.setItem(STORAGE_KEY, JSON.stringify(persisted))
+
+    const detail = await flow.manager.getEquipmentDetail('EQ-001')
+
+    expect(detail.equipment.assetCode).toBe('TRK-001')
+    expect(detail.inspectionHistory[0].checklist).toBeNull()
+    expect(
+      detail.defectContexts.find((item) => item.defect.id === 'DEF-001')
+        ?.inspection,
+    ).toBeNull()
+    expect(
+      detail.correctiveActionContexts.find((item) => item.action.id === 'CA-001')
+        ?.owner,
+    ).toBeNull()
+  })
 })

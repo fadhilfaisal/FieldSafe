@@ -209,6 +209,24 @@ describe('Inspector workflow service', () => {
     expect(await repository.getDefects('ASG-001')).toHaveLength(0)
   })
 
+  it('rejects repeated submission without duplicating persisted records', async () => {
+    const { service, repository } = createFlow()
+    await answerAllPass(service, 'ASG-001', 'USR-INSP-001')
+    await service.saveSignature('ASG-001', 'USR-INSP-001', signature)
+    await service.submitInspection('ASG-001', 'USR-INSP-001')
+    const responsesBefore = await repository.getChecklistResponses('ASG-001')
+    const defectsBefore = await repository.getDefects('ASG-001')
+
+    await expect(
+      service.submitInspection('ASG-001', 'USR-INSP-001'),
+    ).rejects.toThrow('Completed inspections cannot be edited.')
+
+    expect(await repository.getChecklistResponses('ASG-001')).toEqual(
+      responsesBefore,
+    )
+    expect(await repository.getDefects('ASG-001')).toEqual(defectsBefore)
+  })
+
   it('submits Critical FAIL, creates relationally consistent records, and persists OUT OF SERVICE after reconstruction', async () => {
     const flow = createFlow()
     await answerWithFailure(

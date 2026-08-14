@@ -1,6 +1,6 @@
 import { AlertTriangle, ArrowLeft, Check, ClipboardCheck, Send, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { Button } from '../../components/common/Button'
 import { Card } from '../../components/common/Card'
@@ -27,7 +27,8 @@ export function InspectionReviewPage() {
   const navigate = useNavigate()
   const [state, setState] = useState<ReviewState | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [mutationError, setMutationError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [signatureError, setSignatureError] = useState('')
 
@@ -36,9 +37,11 @@ export function InspectionReviewPage() {
     if (!silent) setLoading(true)
     try {
       setState(await inspectionService.getReviewSummary(id, user.id))
-      setError('')
+      setLoadError('')
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load inspection review.')
+      const message = loadError instanceof Error ? loadError.message : 'Unable to load inspection review.'
+      if (silent) setMutationError(message)
+      else setLoadError(message)
     } finally {
       if (!silent) setLoading(false)
     }
@@ -52,9 +55,18 @@ export function InspectionReviewPage() {
 
   async function saveSignature(signature: SignatureData | null) {
     if (!id || !user) return
-    await inspectionService.saveSignature(id, user.id, signature)
-    setSignatureError('')
-    await load(true)
+    try {
+      await inspectionService.saveSignature(id, user.id, signature)
+      setSignatureError('')
+      setMutationError('')
+      await load(true)
+    } catch (saveError) {
+      setMutationError(
+        saveError instanceof Error
+          ? saveError.message
+          : 'Unable to save the Inspector signature.',
+      )
+    }
   }
 
   async function submit() {
@@ -70,25 +82,58 @@ export function InspectionReviewPage() {
     }
 
     setSubmitting(true)
+    setMutationError('')
     try {
       await inspectionService.submitInspection(id, user.id)
       navigate(`/inspector/inspection/${id}/result`, { replace: true })
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Inspection submission failed.')
+      setMutationError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'Inspection submission failed. Try again.',
+      )
       setSubmitting(false)
     }
   }
 
   if (loading) return <LoadingState label="Preparing inspection review…" />
-  if (error || !state) {
+  if (loadError || !state) {
     return (
       <Card>
-        <EmptyState icon={ClipboardCheck} title="Review unavailable" description={error || 'Inspection not found.'} />
+        <EmptyState icon={ClipboardCheck} title="Review unavailable" description={loadError || 'Inspection not found.'} />
       </Card>
     )
   }
 
   const { workspace, resultingEquipmentStatus } = state
+  if (workspace.inspection.status === 'Completed') {
+    return (
+      <Navigate
+        to={`/inspector/inspection/${workspace.inspection.id}/result`}
+        replace
+      />
+    )
+  }
+  const checklistValidation = validateInspectionDraft(
+    workspace.items,
+    workspace.draft,
+  )
+  if (!checklistValidation.isChecklistComplete) {
+    return (
+      <Card>
+        <EmptyState
+          icon={ClipboardCheck}
+          title="Review not ready"
+          description="Complete every checklist item and provide all required defect details before reviewing this inspection."
+          action={(
+            <Button onClick={() => navigate(`/inspector/inspection/${workspace.inspection.id}`)}>
+              Return to Checklist
+            </Button>
+          )}
+        />
+      </Card>
+    )
+  }
   const draftResponses = workspace.draft?.responses ?? []
   const passed = draftResponses.filter((response) => response.result === 'Pass')
   const failed = draftResponses.filter((response) => response.result === 'Fail')
@@ -197,6 +242,12 @@ export function InspectionReviewPage() {
         </div>
         {signatureError ? <p className="mt-3 text-sm font-semibold text-danger-700" role="alert">{signatureError}</p> : null}
       </Card>
+
+      {mutationError ? (
+        <p className="rounded-xl border border-danger-100 bg-danger-50 p-4 text-sm font-semibold text-danger-700" role="alert">
+          {mutationError}
+        </p>
+      ) : null}
 
       <Button variant={failed.length > 0 ? 'danger' : 'primary'} size="lg" className="w-full" onClick={() => void submit()} disabled={submitting}>
         <Send aria-hidden="true" className="size-5" />

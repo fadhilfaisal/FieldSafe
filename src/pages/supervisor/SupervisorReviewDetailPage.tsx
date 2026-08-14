@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ArrowLeft,
   Check,
   CheckCircle2,
@@ -126,7 +127,14 @@ export function SupervisorReviewDetailPage() {
         />
         <div className="flex flex-wrap items-center gap-2">
           <ReviewStatusBadge status={review.inspection.reviewStatus ?? 'Pending Review'} />
-          <StatusBadge status={review.inspection.result ?? 'Pass'} />
+          {review.inspection.result ? (
+            <StatusBadge status={review.inspection.result} />
+          ) : (
+            <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-warning-100 bg-warning-50 px-2.5 py-1 text-xs font-bold text-warning-800">
+              <AlertTriangle aria-hidden="true" className="size-3.5" />
+              Result unavailable
+            </span>
+          )}
           <StatusBadge status={review.equipment.status} />
         </div>
       </div>
@@ -182,8 +190,18 @@ export function SupervisorReviewDetailPage() {
         {failed.length === 0 ? (
           <Card><EmptyState icon={CheckCircle2} title="No defects recorded" description="Every checklist item passed during this inspection." /></Card>
         ) : null}
-        {failed.map(({ item, defect }) => {
-          if (!defect) return null
+        {failed.map(({ item, response, defect }) => {
+          if (!defect) {
+            return (
+              <Card key={response.id}>
+                <EmptyState
+                  icon={AlertTriangle}
+                  title="Defect details unavailable"
+                  description={`${item.category} failed, but its related defect record could not be resolved. No corrective action can be created from this record.`}
+                />
+              </Card>
+            )
+          }
           const existingAction = review.actions.find((action) => action.defectId === defect.id)
           return (
             <Card key={defect.id} className="overflow-hidden">

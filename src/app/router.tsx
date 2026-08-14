@@ -35,6 +35,7 @@ import {
   ManagerHomePage,
 } from '../pages/manager/ManagerPages'
 import { NotFoundPage } from '../pages/shared/NotFoundPage'
+import { RouteErrorPage } from '../pages/shared/RouteErrorPage'
 import {
   SupervisorActionDetailPage,
   SupervisorActionsPage,
@@ -56,7 +57,7 @@ const managerNavigation: OperationsNavItem[] = [
   { label: 'Equipment', to: '/manager/equipment', icon: Truck },
 ]
 
-export const appRoutes: RouteObject[] = [
+const fieldSafeRoutes: RouteObject[] = [
   { path: '/', element: <Navigate to="/login" replace /> },
   {
     element: <LoginRoute />,
@@ -127,5 +128,10 @@ export const appRoutes: RouteObject[] = [
   },
   { path: '*', element: <NotFoundPage /> },
 ]
+
+export const appRoutes: RouteObject[] = fieldSafeRoutes.map((route) => ({
+  ...route,
+  errorElement: <RouteErrorPage />,
+}))
 
 export const router = createBrowserRouter(appRoutes)

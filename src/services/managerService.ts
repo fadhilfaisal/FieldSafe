@@ -87,22 +87,22 @@ export interface ManagerEquipmentListItem {
 
 export interface ManagerInspectionHistoryItem {
   inspection: Inspection
-  checklist: Checklist
-  inspector: User
+  checklist: Checklist | null
+  inspector: User | null
   defects: Defect[]
 }
 
 export interface ManagerDefectContext {
   defect: Defect
   category: string
-  inspection: Inspection
+  inspection: Inspection | null
   correctiveActions: CorrectiveAction[]
 }
 
 export interface ManagerCorrectiveActionContext {
   action: CorrectiveAction
-  defect: Defect
-  owner: User
+  defect: Defect | null
+  owner: User | null
 }
 
 export interface ManagerEquipmentDetail extends ManagerEquipmentListItem {
@@ -291,15 +291,10 @@ export class ManagerService {
       const inspector = snapshot.users.find(
         (item) => item.id === inspection.inspectorId,
       )
-      if (!checklist || !inspector) {
-        throw new ManagerDataError(
-          `Inspection ${inspection.id} has incomplete related data.`,
-        )
-      }
       return {
         inspection,
-        checklist,
-        inspector,
+        checklist: checklist ?? null,
+        inspector: inspector ?? null,
         defects: snapshot.defects.filter(
           (defect) => defect.inspectionId === inspection.id,
         ),
@@ -316,17 +311,12 @@ export class ManagerService {
         const inspection = equipmentInspections.find(
           (item) => item.id === defect.inspectionId,
         )
-        if (!inspection) {
-          throw new ManagerDataError(
-            `Defect ${defect.id} has no completed inspection.`,
-          )
-        }
         const response = responseById.get(defect.checklistResponseId)
         const item = response ? itemById.get(response.checklistItemId) : null
         return {
           defect,
           category: item?.category ?? defect.title,
-          inspection,
+          inspection: inspection ?? null,
           correctiveActions: snapshot.correctiveActions.filter(
             (action) => action.defectId === defect.id,
           ),
@@ -344,12 +334,7 @@ export class ManagerService {
         const owner = snapshot.users.find(
           (item) => item.id === action.assignedToUserId,
         )
-        if (!defect || !owner) {
-          throw new ManagerDataError(
-            `Corrective action ${action.id} has incomplete related data.`,
-          )
-        }
-        return { action, defect, owner }
+        return { action, defect: defect ?? null, owner: owner ?? null }
       })
       .sort((left, right) =>
         right.action.createdAt.localeCompare(left.action.createdAt),

@@ -100,7 +100,9 @@ export function ManagerHomePage() {
                   View board <ArrowRight aria-hidden="true" className="size-4" />
                 </Link>
               </div>
-              {overview.highestRiskEquipment.length > 0 ? (
+              {overview.totalEquipmentCount === 0 ? (
+                <EmptyState icon={Truck} title="No equipment data" description="Fleet safety state is unavailable because no equipment records were found." />
+              ) : overview.highestRiskEquipment.length > 0 ? (
                 <div className="mt-5 divide-y divide-slate-100">
                   {overview.highestRiskEquipment.map((item) => (
                     <Link key={item.equipment.id} to={`/manager/equipment/${item.equipment.id}`} className="flex min-h-16 items-center justify-between gap-4 py-3 hover:bg-slate-50">

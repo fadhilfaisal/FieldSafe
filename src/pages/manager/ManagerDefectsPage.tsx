@@ -57,21 +57,29 @@ export function ManagerDefectsPage() {
             <Card className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Severity Breakdown</h2>
               <p className="mt-1 text-sm text-slate-500">All reported defects grouped by originating severity.</p>
-              <div className="mt-6 space-y-5">
-                <AnalyticsBar label="Minor" value={analytics.severityBreakdown.Minor} maximum={Math.max(1, analytics.totalDefects)} tone="brand" />
-                <AnalyticsBar label="Major" value={analytics.severityBreakdown.Major} maximum={Math.max(1, analytics.totalDefects)} tone="warning" />
-                <AnalyticsBar label="Critical" value={analytics.severityBreakdown.Critical} maximum={Math.max(1, analytics.totalDefects)} tone="danger" />
-              </div>
+              {analytics.totalDefects === 0 ? (
+                <EmptyState icon={ShieldAlert} title="No defect severity data" description="No defects have been recorded in the operational dataset." />
+              ) : (
+                <div className="mt-6 space-y-5">
+                  <AnalyticsBar label="Minor" value={analytics.severityBreakdown.Minor} maximum={Math.max(1, analytics.totalDefects)} tone="brand" />
+                  <AnalyticsBar label="Major" value={analytics.severityBreakdown.Major} maximum={Math.max(1, analytics.totalDefects)} tone="warning" />
+                  <AnalyticsBar label="Critical" value={analytics.severityBreakdown.Critical} maximum={Math.max(1, analytics.totalDefects)} tone="danger" />
+                </div>
+              )}
             </Card>
 
             <Card className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Defect Lifecycle</h2>
               <p className="mt-1 text-sm text-slate-500">Current status of persisted defect records.</p>
-              <div className="mt-6 space-y-5">
-                <AnalyticsBar label="Open" value={analytics.statusBreakdown.open} maximum={Math.max(1, analytics.totalDefects)} tone="danger" />
-                <AnalyticsBar label="Under Review" value={analytics.statusBreakdown.underReview} maximum={Math.max(1, analytics.totalDefects)} tone="warning" />
-                <AnalyticsBar label="Resolved" value={analytics.statusBreakdown.resolved} maximum={Math.max(1, analytics.totalDefects)} tone="success" />
-              </div>
+              {analytics.totalDefects === 0 ? (
+                <EmptyState icon={ShieldAlert} title="No defect lifecycle data" description="Lifecycle metrics will appear when defects are reported." />
+              ) : (
+                <div className="mt-6 space-y-5">
+                  <AnalyticsBar label="Open" value={analytics.statusBreakdown.open} maximum={Math.max(1, analytics.totalDefects)} tone="danger" />
+                  <AnalyticsBar label="Under Review" value={analytics.statusBreakdown.underReview} maximum={Math.max(1, analytics.totalDefects)} tone="warning" />
+                  <AnalyticsBar label="Resolved" value={analytics.statusBreakdown.resolved} maximum={Math.max(1, analytics.totalDefects)} tone="success" />
+                </div>
+              )}
             </Card>
           </div>
 
@@ -79,21 +87,29 @@ export function ManagerDefectsPage() {
             <Card className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Defect Volume Over Time</h2>
               <p className="mt-1 text-sm text-slate-500">Reported defects grouped by month.</p>
-              <div className="mt-6 space-y-5">
-                {analytics.volumeTrend.map((period) => (
-                  <AnalyticsBar key={period.key} label={period.label} value={period.defectCount} maximum={maximumVolume} tone="danger" />
-                ))}
-              </div>
+              {analytics.volumeTrend.length === 0 ? (
+                <EmptyState icon={TriangleAlert} title="No defect volume" description="No reported defects are available for the operating history." />
+              ) : (
+                <div className="mt-6 space-y-5">
+                  {analytics.volumeTrend.map((period) => (
+                    <AnalyticsBar key={period.key} label={period.label} value={period.defectCount} maximum={maximumVolume} tone="danger" />
+                  ))}
+                </div>
+              )}
             </Card>
 
             <Card className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Common Defect Categories</h2>
               <p className="mt-1 text-sm text-slate-500">Checklist categories resolved from failed inspection responses.</p>
-              <div className="mt-6 space-y-5">
-                {analytics.commonCategories.slice(0, 8).map((item) => (
-                  <AnalyticsBar key={item.category} label={item.category} value={item.defectCount} maximum={maximumCategory} tone="slate" />
-                ))}
-              </div>
+              {analytics.commonCategories.length === 0 ? (
+                <EmptyState icon={TriangleAlert} title="No defect categories" description="Checklist categories will appear after defects are reported." />
+              ) : (
+                <div className="mt-6 space-y-5">
+                  {analytics.commonCategories.slice(0, 8).map((item) => (
+                    <AnalyticsBar key={item.category} label={item.category} value={item.defectCount} maximum={maximumCategory} tone="slate" />
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
         </>

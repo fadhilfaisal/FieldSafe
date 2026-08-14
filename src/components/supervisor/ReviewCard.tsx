@@ -1,4 +1,4 @@
-import { ArrowRight, MapPin, UserRound } from 'lucide-react'
+import { AlertTriangle, ArrowRight, MapPin, UserRound } from 'lucide-react'
 import { Link } from 'react-router'
 import type { SupervisorReviewListItem } from '../../services/supervisorService'
 import { formatDateTime } from '../../utils/format'
@@ -17,7 +17,14 @@ export function ReviewCard({ review }: { review: SupervisorReviewListItem }) {
               {review.equipment.assetCode}
             </span>
             <ReviewStatusBadge status={review.inspection.reviewStatus ?? 'Pending Review'} />
-            <StatusBadge status={review.inspection.result ?? 'Pass'} />
+            {review.inspection.result ? (
+              <StatusBadge status={review.inspection.result} />
+            ) : (
+              <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-warning-100 bg-warning-50 px-2.5 py-1 text-xs font-bold text-warning-800">
+                <AlertTriangle aria-hidden="true" className="size-3.5" />
+                Result unavailable
+              </span>
+            )}
             {review.highestSeverity ? (
               <SeverityBadge severity={review.highestSeverity} />
             ) : null}

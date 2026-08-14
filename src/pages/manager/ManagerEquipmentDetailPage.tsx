@@ -77,7 +77,7 @@ export function ManagerEquipmentDetailPage() {
                   <SeverityBadge severity={defect.severity} />
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">{defect.description}</p>
-                <p className="mt-3 text-xs text-slate-500">Reported {formatDateTime(defect.reportedAt)} · {defect.status} · Inspection {inspection.id}</p>
+                <p className="mt-3 text-xs text-slate-500">Reported {formatDateTime(defect.reportedAt)} · {defect.status} · Inspection {inspection?.id ?? 'Unavailable'}</p>
                 {defect.evidenceReference ? <EvidencePreview evidence={defect.evidenceReference} alt={`Evidence for ${category}`} className="mt-4 h-32 w-full rounded-lg object-cover" /> : null}
                 <p className="mt-4 text-xs font-semibold text-slate-600">{correctiveActions.length > 0 ? `${correctiveActions.length} related corrective action` : 'No corrective action recorded'}</p>
               </Card>
@@ -99,7 +99,7 @@ export function ManagerEquipmentDetailPage() {
               <thead className="bg-slate-50"><tr className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500"><th className="px-4 py-3" scope="col">Inspection</th><th className="px-4 py-3" scope="col">Checklist</th><th className="px-4 py-3" scope="col">Inspector</th><th className="px-4 py-3" scope="col">Submitted</th><th className="px-4 py-3" scope="col">Result</th><th className="px-4 py-3" scope="col">Defects</th><th className="px-4 py-3" scope="col">Review</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {detail.inspectionHistory.slice(0, 8).map((item) => (
-                  <tr key={item.inspection.id} className="text-sm text-slate-600"><td className="px-4 py-4 font-bold text-brand-800">{item.inspection.id}</td><td className="px-4 py-4">{item.checklist.name}</td><td className="px-4 py-4">{item.inspector.name}</td><td className="whitespace-nowrap px-4 py-4 text-xs">{formatDateTime(item.inspection.submittedAt ?? item.inspection.completedAt)}</td><td className="px-4 py-4">{item.inspection.result ? <StatusBadge status={item.inspection.result} /> : 'Not available'}</td><td className="px-4 py-4 font-bold text-slate-900">{item.defects.length}</td><td className="px-4 py-4">{item.inspection.reviewStatus ?? 'Not reviewed'}</td></tr>
+                  <tr key={item.inspection.id} className="text-sm text-slate-600"><td className="px-4 py-4 font-bold text-brand-800">{item.inspection.id}</td><td className="px-4 py-4">{item.checklist?.name ?? 'Checklist unavailable'}</td><td className="px-4 py-4">{item.inspector?.name ?? 'Inspector unavailable'}</td><td className="whitespace-nowrap px-4 py-4 text-xs">{formatDateTime(item.inspection.submittedAt ?? item.inspection.completedAt)}</td><td className="px-4 py-4">{item.inspection.result ? <StatusBadge status={item.inspection.result} /> : 'Not available'}</td><td className="px-4 py-4 font-bold text-slate-900">{item.defects.length}</td><td className="px-4 py-4">{item.inspection.reviewStatus ?? 'Not reviewed'}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -117,7 +117,7 @@ export function ManagerEquipmentDetailPage() {
               <Card key={action.id} className="p-5">
                 <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.1em] text-brand-700">{action.id}</p><h3 className="mt-1 font-bold text-slate-950">{action.title}</h3></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">{action.status}</span></div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">{action.description}</p>
-                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500"><span>Owner: <strong className="text-slate-700">{owner.name}</strong></span><span>Due: <strong className="text-slate-700">{formatDate(action.dueAt)}</strong></span><SeverityBadge severity={defect.severity} /></div>
+                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500"><span>Owner: <strong className="text-slate-700">{owner?.name ?? 'Unavailable'}</strong></span><span>Due: <strong className="text-slate-700">{formatDate(action.dueAt)}</strong></span>{defect ? <SeverityBadge severity={defect.severity} /> : <span className="font-semibold text-warning-800">Related defect unavailable</span>}</div>
               </Card>
             ))}
           </div>

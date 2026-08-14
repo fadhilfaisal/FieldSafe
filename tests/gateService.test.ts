@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DEMO_EVIDENCE } from '../src/domain/evidence'
 import type { SignatureData } from '../src/domain/models'
 import {
@@ -7,6 +7,7 @@ import {
 } from '../src/repositories/browserFieldSafeRepository'
 import { GateService } from '../src/services/gateService'
 import { InspectionService } from '../src/services/inspectionService'
+import type { FieldSafeRepository } from '../src/repositories/fieldSafeRepository'
 import { BrowserStorageAdapter } from '../src/storage/browserStorageAdapter'
 import type { StorageDriver } from '../src/storage/storageAdapter'
 
@@ -122,5 +123,21 @@ describe('Gate equipment check service', () => {
     await flow.gate.checkEquipment('EQ-003')
 
     expect(flow.storage.getItem(STORAGE_KEY)).toBe(before)
+  })
+
+  it('never returns Allowed when safety data cannot be read', async () => {
+    const repository = {
+      getEquipment: vi.fn().mockResolvedValue([
+        { id: 'EQ-UNKNOWN', assetCode: 'UNKNOWN-001' },
+      ]),
+      getDefects: vi.fn().mockRejectedValue(
+        new Error('Safety state unavailable.'),
+      ),
+    } as unknown as FieldSafeRepository
+    const gate = new GateService(repository)
+
+    await expect(gate.checkEquipment('EQ-UNKNOWN')).rejects.toThrow(
+      'Safety state unavailable.',
+    )
   })
 })

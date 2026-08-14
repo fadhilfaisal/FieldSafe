@@ -53,21 +53,29 @@ export function ManagerCompliancePage() {
             <Card className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Compliance Trend</h2>
               <p className="mt-1 text-sm text-slate-500">Monthly performance across the seeded historical period.</p>
-              <div className="mt-6 space-y-5">
-                {analytics.trend.map((period) => (
-                  <AnalyticsBar key={period.key} label={period.label} value={period.complianceRate} maximum={100} displayValue={`${period.complianceRate}%`} tone={period.complianceRate >= 90 ? 'success' : period.complianceRate >= 75 ? 'warning' : 'danger'} supportingText={`${period.passedCount} passed · ${period.failedCount} failed · ${period.inspectionCount} total`} />
-                ))}
-              </div>
+              {analytics.trend.length === 0 ? (
+                <EmptyState icon={ClipboardCheck} title="No compliance history" description="No completed inspections are available for compliance calculation." />
+              ) : (
+                <div className="mt-6 space-y-5">
+                  {analytics.trend.map((period) => (
+                    <AnalyticsBar key={period.key} label={period.label} value={period.complianceRate} maximum={100} displayValue={`${period.complianceRate}%`} tone={period.complianceRate >= 90 ? 'success' : period.complianceRate >= 75 ? 'warning' : 'danger'} supportingText={`${period.passedCount} passed · ${period.failedCount} failed · ${period.inspectionCount} total`} />
+                  ))}
+                </div>
+              )}
             </Card>
 
             <Card className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Inspection Volume</h2>
               <p className="mt-1 text-sm text-slate-500">Completed inspections by month.</p>
-              <div className="mt-6 space-y-5">
-                {analytics.trend.map((period) => (
-                  <AnalyticsBar key={period.key} label={period.label} value={period.inspectionCount} maximum={maximumPeriodVolume} tone="brand" supportingText={`${period.complianceRate}% compliant`} />
-                ))}
-              </div>
+              {analytics.trend.length === 0 ? (
+                <EmptyState icon={ChartNoAxesCombined} title="No inspection volume" description="Inspection volume will appear after completed inspections are submitted." />
+              ) : (
+                <div className="mt-6 space-y-5">
+                  {analytics.trend.map((period) => (
+                    <AnalyticsBar key={period.key} label={period.label} value={period.inspectionCount} maximum={maximumPeriodVolume} tone="brand" supportingText={`${period.complianceRate}% compliant`} />
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
 
@@ -76,11 +84,15 @@ export function ManagerCompliancePage() {
               <h2 className="text-xl font-bold text-slate-950">Compliance by Equipment Type</h2>
               <p className="mt-1 text-sm text-slate-500">Performance calculated from completed inspections associated with each fleet type.</p>
             </div>
-            <div className="grid gap-6 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
-              {analytics.byEquipmentType.map((item) => (
-                <AnalyticsBar key={item.equipmentType} label={item.equipmentType} value={item.complianceRate} maximum={100} displayValue={`${item.complianceRate}%`} tone={item.complianceRate >= 90 ? 'success' : item.complianceRate >= 75 ? 'warning' : 'danger'} supportingText={`${item.passedCount} passed · ${item.failedCount} failed`} />
-              ))}
-            </div>
+            {analytics.inspectionCount === 0 ? (
+              <EmptyState icon={ClipboardCheck} title="No equipment-type compliance" description="No completed inspection data is available for an equipment-type breakdown." />
+            ) : (
+              <div className="grid gap-6 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
+                {analytics.byEquipmentType.map((item) => (
+                  <AnalyticsBar key={item.equipmentType} label={item.equipmentType} value={item.complianceRate} maximum={100} displayValue={`${item.complianceRate}%`} tone={item.complianceRate >= 90 ? 'success' : item.complianceRate >= 75 ? 'warning' : 'danger'} supportingText={`${item.passedCount} passed · ${item.failedCount} failed`} />
+                ))}
+              </div>
+            )}
           </Card>
         </>
       ) : null}
