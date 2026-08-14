@@ -48,6 +48,7 @@ export interface ChecklistItem {
 
 export type InspectionStatus = 'Assigned' | 'In Progress' | 'Completed'
 export type InspectionResult = 'Pass' | 'Fail'
+export type InspectionReviewStatus = 'Pending Review' | 'Reviewed'
 
 export interface SignaturePoint {
   x: number
@@ -71,6 +72,9 @@ export interface Inspection {
   completedAt: IsoDateTime | null
   submittedAt: IsoDateTime | null
   signature: SignatureData | null
+  reviewStatus: InspectionReviewStatus | null
+  reviewedAt: IsoDateTime | null
+  reviewedByUserId: EntityId | null
 }
 
 export type ChecklistResponseResult = 'Pass' | 'Fail' | 'Not Applicable'

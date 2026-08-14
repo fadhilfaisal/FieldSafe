@@ -438,6 +438,9 @@ export class InspectionService {
       completedAt: submittedAt,
       submittedAt,
       signature: workspace.draft.signature,
+      reviewStatus: 'Pending Review',
+      reviewedAt: null,
+      reviewedByUserId: null,
     }
 
     await this.repository.commitInspectionSubmission({

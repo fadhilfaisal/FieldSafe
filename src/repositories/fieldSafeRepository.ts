@@ -29,6 +29,8 @@ export interface FieldSafeRepository {
   getChecklistResponses(inspectionId?: string): Promise<ChecklistResponse[]>
   getDefects(inspectionId?: string): Promise<Defect[]>
   getCorrectiveActions(): Promise<CorrectiveAction[]>
+  getCorrectiveActionById(id: string): Promise<CorrectiveAction | null>
+  saveCorrectiveAction(action: CorrectiveAction): Promise<CorrectiveAction>
   saveEquipment(equipment: Equipment): Promise<Equipment>
   saveInspection(inspection: Inspection): Promise<Inspection>
   getInspectionDraft(inspectionId: string): Promise<InspectionDraft | null>

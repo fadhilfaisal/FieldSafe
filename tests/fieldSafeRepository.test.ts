@@ -72,6 +72,11 @@ describe('deterministic FieldSafe seed data', () => {
     expect(failCount).toBe(12)
     expect(seed.defects).toHaveLength(12)
     expect(seed.correctiveActions).toHaveLength(12)
+    expect(
+      seed.inspections.filter(
+        (item) => item.reviewStatus === 'Pending Review',
+      ),
+    ).toHaveLength(8)
     expect(actionCounts.Open).toHaveLength(4)
     expect(actionCounts['In Progress']).toHaveLength(4)
     expect(actionCounts.Done).toHaveLength(4)
@@ -171,6 +176,9 @@ describe('BrowserFieldSafeRepository persistence', () => {
         delete record.dueAt
         delete record.submittedAt
         delete record.signature
+        delete record.reviewStatus
+        delete record.reviewedAt
+        delete record.reviewedByUserId
         return record as unknown as typeof inspection
       })
     legacy.defects = legacy.defects.map((defect) => {
@@ -239,5 +247,32 @@ describe('BrowserFieldSafeRepository persistence', () => {
     expect((await repository.getEquipment())[0].site).toBe(
       'Persisted Custom Site',
     )
+  })
+
+  it('migrates version-two inspections to the review lifecycle without resetting data', async () => {
+    const storage = new MemoryStorage()
+    const { adapter, repository } = createRepository(storage)
+    const versionTwoData = createFieldSafeSeedData()
+    versionTwoData.equipment[0].site = 'Preserved Migration Site'
+    versionTwoData.inspections = versionTwoData.inspections.map((inspection) => {
+      const legacy = { ...inspection } as Record<string, unknown>
+      delete legacy.reviewStatus
+      delete legacy.reviewedAt
+      delete legacy.reviewedByUserId
+      return legacy as unknown as typeof inspection
+    })
+    adapter.write({ schemaVersion: 2, data: versionTwoData })
+
+    await repository.initialize()
+
+    expect(adapter.read()?.schemaVersion).toBe(OPERATIONAL_DATA_SCHEMA_VERSION)
+    expect((await repository.getEquipment())[0].site).toBe(
+      'Preserved Migration Site',
+    )
+    expect(
+      (await repository.getInspections()).filter(
+        (inspection) => inspection.reviewStatus === 'Pending Review',
+      ),
+    ).toHaveLength(8)
   })
 })

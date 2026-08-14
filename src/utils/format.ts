@@ -15,5 +15,8 @@ export function formatDate(value: string | null) {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    // Operational due dates are stored as UTC end-of-day timestamps. Formatting
+    // them in UTC preserves the calendar date selected by the Supervisor.
+    timeZone: 'UTC',
   }).format(new Date(value))
 }

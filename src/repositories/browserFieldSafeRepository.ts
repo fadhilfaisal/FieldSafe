@@ -19,7 +19,7 @@ import type { StorageAdapter } from '../storage/storageAdapter'
 import type { FieldSafeRepository } from './fieldSafeRepository'
 import type { InspectionSubmissionPersistence } from './fieldSafeRepository'
 
-export const OPERATIONAL_DATA_SCHEMA_VERSION = 2 as const
+export const OPERATIONAL_DATA_SCHEMA_VERSION = 3 as const
 
 export interface PersistedOperationalData {
   schemaVersion: number
@@ -67,7 +67,14 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
     }
 
     if (persisted.schemaVersion === 1) {
-      this.writeData(this.migrateVersionOne(persisted.data))
+      this.writeData(
+        this.migrateVersionTwo(this.migrateVersionOne(persisted.data)),
+      )
+      return
+    }
+
+    if (persisted.schemaVersion === 2) {
+      this.writeData(this.migrateVersionTwo(persisted.data))
       return
     }
 
@@ -133,6 +140,28 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
 
   async getCorrectiveActions(): Promise<CorrectiveAction[]> {
     return clone((await this.readData()).correctiveActions)
+  }
+
+  async getCorrectiveActionById(id: string): Promise<CorrectiveAction | null> {
+    const action = (await this.readData()).correctiveActions.find(
+      (item) => item.id === id,
+    )
+    return action ? clone(action) : null
+  }
+
+  async saveCorrectiveAction(
+    action: CorrectiveAction,
+  ): Promise<CorrectiveAction> {
+    const data = await this.readData()
+    const index = data.correctiveActions.findIndex(
+      (item) => item.id === action.id,
+    )
+
+    if (index === -1) data.correctiveActions.push(clone(action))
+    else data.correctiveActions[index] = clone(action)
+
+    this.writeData(data)
+    return clone(action)
   }
 
   async saveEquipment(equipment: Equipment): Promise<Equipment> {
@@ -250,6 +279,9 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
         dueAt?: string
         submittedAt?: string | null
         signature?: Inspection['signature']
+        reviewStatus?: Inspection['reviewStatus']
+        reviewedAt?: string | null
+        reviewedByUserId?: string | null
       }
       const completedAt = legacy.completedAt
       const startedAt = legacy.startedAt
@@ -265,6 +297,9 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
         dueAt: legacy.dueAt ?? completedAt ?? new Date().toISOString(),
         submittedAt: legacy.submittedAt ?? completedAt,
         signature: legacy.signature ?? null,
+        reviewStatus: legacy.reviewStatus ?? null,
+        reviewedAt: legacy.reviewedAt ?? null,
+        reviewedByUserId: legacy.reviewedByUserId ?? null,
       }
     })
     migrated.defects = migrated.defects.map((defect) => ({
@@ -279,6 +314,52 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
         migrated.inspections.push(inspection)
       }
     }
+
+    return migrated
+  }
+
+  private migrateVersionTwo(data: OperationalData): OperationalData {
+    const migrated = clone(data)
+    const completed = migrated.inspections
+      .filter((inspection) => inspection.status === 'Completed')
+      .sort((a, b) =>
+        (b.submittedAt ?? b.completedAt ?? '').localeCompare(
+          a.submittedAt ?? a.completedAt ?? '',
+        ),
+      )
+    const pendingIds = new Set(
+      completed.slice(0, 8).map((inspection) => inspection.id),
+    )
+
+    migrated.inspections = migrated.inspections.map((inspection) => {
+      const legacy = inspection as Inspection & {
+        reviewStatus?: Inspection['reviewStatus']
+        reviewedAt?: string | null
+        reviewedByUserId?: string | null
+      }
+      if (
+        legacy.reviewStatus === 'Pending Review' ||
+        legacy.reviewStatus === 'Reviewed'
+      ) {
+        return legacy
+      }
+      if (legacy.status !== 'Completed') {
+        return {
+          ...legacy,
+          reviewStatus: null,
+          reviewedAt: null,
+          reviewedByUserId: null,
+        }
+      }
+
+      const pending = pendingIds.has(legacy.id)
+      return {
+        ...legacy,
+        reviewStatus: pending ? 'Pending Review' : 'Reviewed',
+        reviewedAt: pending ? null : legacy.submittedAt ?? legacy.completedAt,
+        reviewedByUserId: pending ? null : 'USR-SUP-001',
+      }
+    })
 
     return migrated
   }

@@ -242,6 +242,9 @@ export function createSeedAssignedInspections(
       completedAt: null,
       submittedAt: null,
       signature: null,
+      reviewStatus: null,
+      reviewedAt: null,
+      reviewedByUserId: null,
     }
   })
 }
@@ -293,6 +296,9 @@ export function createFieldSafeSeedData(): OperationalData {
       completedAt,
       submittedAt: completedAt,
       signature: null,
+      reviewStatus: index < 8 ? 'Pending Review' : 'Reviewed',
+      reviewedAt: index < 8 ? null : completedAt,
+      reviewedByUserId: index < 8 ? null : 'USR-SUP-001',
     })
 
     items.forEach((item, itemIndex) => {

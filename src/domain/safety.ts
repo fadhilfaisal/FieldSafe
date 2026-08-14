@@ -34,3 +34,19 @@ export function deriveEquipmentStatusFromSeverities(
 
   return 'Fit'
 }
+
+const severityRank: Record<DefectSeverity, number> = {
+  Minor: 1,
+  Major: 2,
+  Critical: 3,
+}
+
+export function getHighestDefectSeverity(
+  severities: DefectSeverity[],
+): DefectSeverity | null {
+  return (
+    severities.slice().sort(
+      (left, right) => severityRank[right] - severityRank[left],
+    )[0] ?? null
+  )
+}
