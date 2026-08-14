@@ -7,6 +7,8 @@ import {
   Wrench,
 } from 'lucide-react'
 import { createBrowserRouter, Navigate } from 'react-router'
+import type { RouteObject } from 'react-router'
+import { LoginRoute, RequireRole } from '../auth/RouteGuards'
 import { FieldShell } from '../components/layout/FieldShell'
 import { GateShell } from '../components/layout/GateShell'
 import {
@@ -51,40 +53,65 @@ const managerNavigation: OperationsNavItem[] = [
   { label: 'Equipment', to: '/manager/equipment', icon: Truck },
 ]
 
-export const router = createBrowserRouter([
+export const appRoutes: RouteObject[] = [
   { path: '/', element: <Navigate to="/login" replace /> },
-  { path: '/login', element: <LoginPage /> },
   {
-    path: '/inspector',
-    element: <FieldShell />,
+    element: <LoginRoute />,
+    children: [{ path: '/login', element: <LoginPage /> }],
+  },
+  {
+    element: <RequireRole allowedRoles={['Inspector']} />,
     children: [
-      { index: true, element: <InspectorHomePage /> },
-      { path: 'scan', element: <InspectorScanPage /> },
-      { path: 'equipment/:id', element: <InspectorEquipmentPage /> },
-      { path: 'inspection/:id', element: <InspectorInspectionPage /> },
-      { path: 'history', element: <InspectorHistoryPage /> },
+      {
+        path: '/inspector',
+        element: <FieldShell />,
+        children: [
+          { index: true, element: <InspectorHomePage /> },
+          { path: 'scan', element: <InspectorScanPage /> },
+          { path: 'equipment/:id', element: <InspectorEquipmentPage /> },
+          { path: 'inspection/:id', element: <InspectorInspectionPage /> },
+          { path: 'history', element: <InspectorHistoryPage /> },
+        ],
+      },
     ],
   },
   {
-    path: '/supervisor',
-    element: <OperationsShell role="Supervisor" navigation={supervisorNavigation} />,
+    element: <RequireRole allowedRoles={['Supervisor']} />,
     children: [
-      { index: true, element: <SupervisorHomePage /> },
-      { path: 'reviews', element: <SupervisorReviewsPage /> },
-      { path: 'reviews/:id', element: <SupervisorReviewDetailPage /> },
-      { path: 'actions', element: <SupervisorActionsPage /> },
-      { path: 'actions/:id', element: <SupervisorActionDetailPage /> },
+      {
+        path: '/supervisor',
+        element: (
+          <OperationsShell
+            role="Supervisor"
+            navigation={supervisorNavigation}
+          />
+        ),
+        children: [
+          { index: true, element: <SupervisorHomePage /> },
+          { path: 'reviews', element: <SupervisorReviewsPage /> },
+          { path: 'reviews/:id', element: <SupervisorReviewDetailPage /> },
+          { path: 'actions', element: <SupervisorActionsPage /> },
+          { path: 'actions/:id', element: <SupervisorActionDetailPage /> },
+        ],
+      },
     ],
   },
   {
-    path: '/manager',
-    element: <OperationsShell role="Manager" navigation={managerNavigation} />,
+    element: <RequireRole allowedRoles={['Manager']} />,
     children: [
-      { index: true, element: <ManagerHomePage /> },
-      { path: 'compliance', element: <ManagerCompliancePage /> },
-      { path: 'defects', element: <ManagerDefectsPage /> },
-      { path: 'equipment', element: <ManagerEquipmentPage /> },
-      { path: 'equipment/:id', element: <ManagerEquipmentDetailPage /> },
+      {
+        path: '/manager',
+        element: (
+          <OperationsShell role="Manager" navigation={managerNavigation} />
+        ),
+        children: [
+          { index: true, element: <ManagerHomePage /> },
+          { path: 'compliance', element: <ManagerCompliancePage /> },
+          { path: 'defects', element: <ManagerDefectsPage /> },
+          { path: 'equipment', element: <ManagerEquipmentPage /> },
+          { path: 'equipment/:id', element: <ManagerEquipmentDetailPage /> },
+        ],
+      },
     ],
   },
   {
@@ -93,4 +120,6 @@ export const router = createBrowserRouter([
     children: [{ index: true, element: <GatePage /> }],
   },
   { path: '*', element: <NotFoundPage /> },
-])
+]
+
+export const router = createBrowserRouter(appRoutes)

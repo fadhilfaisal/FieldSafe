@@ -4,7 +4,7 @@ FieldSafe is a static React prototype foundation for field inspection and equipm
 
 ## Current scope
 
-The application currently includes its visual foundation plus typed operational domain data, deterministic demo records, repository contracts, and device-local browser persistence. It intentionally contains no authentication, session state, product workflows, scanning, offline synchronization, analytics, or API integration.
+The application currently includes its visual foundation, typed operational domain data, deterministic demo records, repository contracts, device-local browser persistence, and simulated role-based authentication. It intentionally contains no production authentication, product workflows, scanning, offline synchronization, analytics, or API integration.
 
 ## Architecture direction
 
@@ -19,6 +19,8 @@ UI → service/domain logic → repository contracts → browser-storage adapter
 - Repository contracts live separately from their browser-storage implementation.
 - Deterministic seed data enters through the repository boundary rather than component imports.
 - Operational data is stored under the versioned `fieldsafe:operational-data:v1` key. Reset replaces only that dataset.
+- Session data is stored independently under `fieldsafe:session:v1` and contains only the active seeded user ID.
+- Central route guards redirect an unauthorized authenticated user to their own role landing page.
 
 ## Data locations
 
@@ -27,6 +29,13 @@ UI → service/domain logic → repository contracts → browser-storage adapter
 - `src/repositories` — asynchronous repository contract and browser implementation
 - `src/storage` — JSON browser-storage adapter and storage-driver boundary
 - `src/services` — application initialization and demo reset entry points
+- `src/auth` — demo credentials, authentication service, session store, context, and route guards
+
+## Demo authentication
+
+Interactive seeded users can sign in from `/login` with the shared password `demo123`. The two Inspectors, Supervisor, and Manager are available in the on-screen Demo Accounts list. The seeded Technician remains a supporting data actor and cannot sign in to an application workspace.
+
+Logout clears only `fieldsafe:session:v1`; operational data is preserved. Resetting operational demo data does not clear a valid session because deterministic user IDs remain stable.
 
 ## Scripts
 

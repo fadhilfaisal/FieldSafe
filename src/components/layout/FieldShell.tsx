@@ -1,10 +1,13 @@
 import {
   History,
   Home,
+  LogOut,
   QrCode,
   UserRound,
 } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useNavigate } from 'react-router'
+import { useAuth } from '../../auth/useAuth'
+import { getInitials } from '../../utils/identity'
 import { cn } from '../../utils/cn'
 import { ConnectivityIndicator } from '../common/ConnectivityIndicator'
 import { BrandMark } from './BrandMark'
@@ -16,6 +19,14 @@ const navigation = [
 ]
 
 export function FieldShell() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    logout()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <div className="min-h-dvh bg-slate-100 sm:p-4 lg:p-6">
       <div className="shell-surface mx-auto flex min-h-dvh max-w-5xl flex-col overflow-hidden sm:min-h-[calc(100dvh-2rem)] sm:rounded-2xl lg:min-h-[calc(100dvh-3rem)]">
@@ -25,12 +36,24 @@ export function FieldShell() {
             <ConnectivityIndicator inverted />
             <div className="flex min-h-10 items-center gap-2 border-l border-white/15 pl-3">
               <span className="hidden text-right sm:block">
-                <span className="block text-xs font-semibold text-white">Current user</span>
-                <span className="mt-0.5 block text-[10px] text-blue-100">Inspector</span>
+                <span className="block text-xs font-semibold text-white">{user?.name}</span>
+                <span className="mt-0.5 block text-[10px] text-blue-100">{user?.role}</span>
               </span>
-              <span className="flex size-9 items-center justify-center rounded-full bg-white/12">
-                <UserRound aria-hidden="true" className="size-5" />
+              <span
+                className="flex size-9 items-center justify-center rounded-full bg-white/12 text-xs font-bold"
+                aria-hidden="true"
+              >
+                {user ? getInitials(user.name) : <UserRound className="size-5" />}
               </span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex size-10 items-center justify-center rounded-lg text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label="Log out"
+                title="Log out"
+              >
+                <LogOut aria-hidden="true" className="size-5" />
+              </button>
             </div>
           </div>
         </header>

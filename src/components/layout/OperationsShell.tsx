@@ -1,10 +1,11 @@
 import {
-  Bell,
-  ChevronDown,
   type LucideIcon,
+  LogOut,
   UserRound,
 } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useNavigate } from 'react-router'
+import { useAuth } from '../../auth/useAuth'
+import { getInitials } from '../../utils/identity'
 import { cn } from '../../utils/cn'
 import { ConnectivityIndicator } from '../common/ConnectivityIndicator'
 import { BrandMark } from './BrandMark'
@@ -22,6 +23,14 @@ interface OperationsShellProps {
 }
 
 export function OperationsShell({ role, navigation }: OperationsShellProps) {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    logout()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <div className="min-h-dvh bg-slate-100 p-3 lg:p-5">
       <div className="shell-surface mx-auto grid min-h-[calc(100dvh-1.5rem)] max-w-[1600px] grid-cols-[5rem_1fr] overflow-hidden rounded-2xl lg:min-h-[calc(100dvh-2.5rem)] lg:grid-cols-[16rem_1fr]">
@@ -73,26 +82,29 @@ export function OperationsShell({ role, navigation }: OperationsShellProps) {
             </div>
             <div className="flex items-center gap-1 sm:gap-3">
               <ConnectivityIndicator />
-              <button
-                type="button"
-                aria-label="Notifications"
-                className="flex size-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
-              >
-                <Bell aria-hidden="true" className="size-5" />
-              </button>
-              <button
-                type="button"
-                className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-left hover:bg-slate-100"
-                aria-label="Current user menu"
-              >
+              <div className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-left">
                 <span className="flex size-9 items-center justify-center rounded-full bg-brand-50 text-brand-700">
-                  <UserRound aria-hidden="true" className="size-5" />
+                  {user ? (
+                    <span className="text-xs font-bold" aria-hidden="true">
+                      {getInitials(user.name)}
+                    </span>
+                  ) : (
+                    <UserRound aria-hidden="true" className="size-5" />
+                  )}
                 </span>
-                <span className="hidden xl:block">
-                  <span className="block text-xs font-bold text-slate-900">Current user</span>
-                  <span className="mt-0.5 block text-[10px] text-slate-500">{role}</span>
+                <span className="hidden sm:block">
+                  <span className="block text-xs font-bold text-slate-900">{user?.name}</span>
+                  <span className="mt-0.5 block text-[10px] text-slate-500">{user?.role ?? role}</span>
                 </span>
-                <ChevronDown aria-hidden="true" className="hidden size-4 text-slate-400 xl:block" />
+              </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex size-11 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Log out"
+                title="Log out"
+              >
+                <LogOut aria-hidden="true" className="size-5" />
               </button>
             </div>
           </header>
