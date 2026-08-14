@@ -16,6 +16,7 @@ const navigation = [
   { label: 'Home', to: '/inspector', icon: Home, end: true },
   { label: 'Scan', to: '/inspector/scan', icon: QrCode },
   { label: 'History', to: '/inspector/history', icon: History },
+  { label: 'Profile', to: '/inspector/profile', icon: UserRound },
 ]
 
 export function FieldShell() {
@@ -84,13 +85,6 @@ export function FieldShell() {
               {label}
             </NavLink>
           ))}
-          <a
-            href="#profile"
-            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
-          >
-            <UserRound aria-hidden="true" className="size-5" />
-            Profile
-          </a>
         </nav>
       </div>
     </div>

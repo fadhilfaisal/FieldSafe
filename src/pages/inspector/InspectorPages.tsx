@@ -5,3 +5,4 @@ export { InspectionChecklistPage as InspectorInspectionPage } from './Inspection
 export { InspectionReviewPage } from './InspectionReviewPage'
 export { InspectionResultPage } from './InspectionResultPage'
 export { InspectorHistoryPage } from './InspectorHistoryPage'
+export { InspectorProfilePage } from './InspectorProfilePage'
