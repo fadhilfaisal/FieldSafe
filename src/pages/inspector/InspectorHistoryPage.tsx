@@ -7,6 +7,7 @@ import { PageHeader } from '../../components/common/PageHeader'
 import { SeverityBadge } from '../../components/common/SeverityBadge'
 import { StatusBadge } from '../../components/common/StatusBadge'
 import { LoadingState } from '../../components/feedback/LoadingState'
+import { SyncStatusBadge } from '../../components/inspection/SyncStatusBadge'
 import { inspectionService } from '../../services/inspectionService'
 import { formatDateTime } from '../../utils/format'
 
@@ -62,6 +63,7 @@ export function InspectorHistoryPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-bold text-slate-950">{equipment.assetCode}</span>
                       <StatusBadge status={inspection.result!} />
+                      <SyncStatusBadge status={inspection.syncStatus} />
                       {highestSeverity ? <SeverityBadge severity={highestSeverity} /> : null}
                     </div>
                     <h2 className="mt-2 text-sm font-bold text-slate-900">{equipment.name}</h2>

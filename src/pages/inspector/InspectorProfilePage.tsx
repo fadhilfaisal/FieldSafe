@@ -5,10 +5,12 @@ import { Button } from '../../components/common/Button'
 import { Card } from '../../components/common/Card'
 import { PageHeader } from '../../components/common/PageHeader'
 import { DemoResetControl } from '../../components/feedback/DemoResetControl'
+import { useConnectivity } from '../../connectivity/useConnectivity'
 import { getInitials } from '../../utils/identity'
 
 export function InspectorProfilePage() {
   const { user, logout } = useAuth()
+  const { refreshConnectivity } = useConnectivity()
   const navigate = useNavigate()
 
   function handleLogout() {
@@ -58,12 +60,13 @@ export function InspectorProfilePage() {
           </h2>
         </div>
         <DemoResetControl
-          onResetSuccess={() =>
+          onResetSuccess={() => {
+            void refreshConnectivity()
             navigate('/inspector', {
               replace: true,
               state: { demoDataReset: true },
             })
-          }
+          }}
         />
       </section>
     </div>

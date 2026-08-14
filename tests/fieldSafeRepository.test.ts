@@ -275,4 +275,30 @@ describe('BrowserFieldSafeRepository persistence', () => {
       ),
     ).toHaveLength(8)
   })
+
+  it('migrates version-three data to deterministic connectivity and sync metadata', async () => {
+    const storage = new MemoryStorage()
+    const { adapter, repository } = createRepository(storage)
+    const versionThreeData = createFieldSafeSeedData()
+    delete (versionThreeData as unknown as Record<string, unknown>)
+      .simulatedConnectivity
+    versionThreeData.inspections = versionThreeData.inspections.map(
+      (inspection) => {
+        const legacy = { ...inspection } as Record<string, unknown>
+        delete legacy.syncStatus
+        return legacy as unknown as typeof inspection
+      },
+    )
+    adapter.write({ schemaVersion: 3, data: versionThreeData })
+
+    await repository.initialize()
+
+    expect(adapter.read()?.schemaVersion).toBe(OPERATIONAL_DATA_SCHEMA_VERSION)
+    expect(await repository.getSimulatedConnectivity()).toBe('ONLINE')
+    expect(
+      (await repository.getInspections()).every(
+        (inspection) => inspection.syncStatus === 'SYNCED',
+      ),
+    ).toBe(true)
+  })
 })

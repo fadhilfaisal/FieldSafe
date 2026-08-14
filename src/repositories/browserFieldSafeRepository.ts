@@ -13,13 +13,14 @@ import type {
   Inspection,
   InspectionDraft,
   OperationalData,
+  SimulatedConnectivityState,
   User,
 } from '../domain/models'
 import type { StorageAdapter } from '../storage/storageAdapter'
 import type { FieldSafeRepository } from './fieldSafeRepository'
 import type { InspectionSubmissionPersistence } from './fieldSafeRepository'
 
-export const OPERATIONAL_DATA_SCHEMA_VERSION = 3 as const
+export const OPERATIONAL_DATA_SCHEMA_VERSION = 4 as const
 
 export interface PersistedOperationalData {
   schemaVersion: number
@@ -68,13 +69,22 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
 
     if (persisted.schemaVersion === 1) {
       this.writeData(
-        this.migrateVersionTwo(this.migrateVersionOne(persisted.data)),
+        this.migrateVersionThree(
+          this.migrateVersionTwo(this.migrateVersionOne(persisted.data)),
+        ),
       )
       return
     }
 
     if (persisted.schemaVersion === 2) {
-      this.writeData(this.migrateVersionTwo(persisted.data))
+      this.writeData(
+        this.migrateVersionThree(this.migrateVersionTwo(persisted.data)),
+      )
+      return
+    }
+
+    if (persisted.schemaVersion === 3) {
+      this.writeData(this.migrateVersionThree(persisted.data))
       return
     }
 
@@ -105,6 +115,40 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
   async getInspectionById(id: string): Promise<Inspection | null> {
     const inspection = (await this.readData()).inspections.find((item) => item.id === id)
     return inspection ? clone(inspection) : null
+  }
+
+  async getSimulatedConnectivity(): Promise<SimulatedConnectivityState> {
+    return (await this.readData()).simulatedConnectivity
+  }
+
+  async saveSimulatedConnectivity(
+    state: SimulatedConnectivityState,
+  ): Promise<SimulatedConnectivityState> {
+    const data = await this.readData()
+    data.simulatedConnectivity = state
+    this.writeData(data)
+    return state
+  }
+
+  async markPendingInspectionsSynced(): Promise<Inspection[]> {
+    const data = await this.readData()
+    const synchronized: Inspection[] = []
+
+    data.inspections = data.inspections.map((inspection) => {
+      if (
+        inspection.status !== 'Completed' ||
+        inspection.syncStatus !== 'PENDING_SYNC'
+      ) {
+        return inspection
+      }
+
+      const updated: Inspection = { ...inspection, syncStatus: 'SYNCED' }
+      synchronized.push(updated)
+      return updated
+    })
+
+    if (synchronized.length > 0) this.writeData(data)
+    return clone(synchronized)
   }
 
   async getChecklists(): Promise<Checklist[]> {
@@ -358,6 +402,28 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
         reviewStatus: pending ? 'Pending Review' : 'Reviewed',
         reviewedAt: pending ? null : legacy.submittedAt ?? legacy.completedAt,
         reviewedByUserId: pending ? null : 'USR-SUP-001',
+      }
+    })
+
+    return migrated
+  }
+
+  private migrateVersionThree(data: OperationalData): OperationalData {
+    const migrated = clone(data)
+    const legacyData = migrated as OperationalData & {
+      simulatedConnectivity?: SimulatedConnectivityState
+    }
+
+    legacyData.simulatedConnectivity =
+      legacyData.simulatedConnectivity === 'OFFLINE' ? 'OFFLINE' : 'ONLINE'
+    migrated.inspections = migrated.inspections.map((inspection) => {
+      const legacy = inspection as Inspection & {
+        syncStatus?: Inspection['syncStatus']
+      }
+      return {
+        ...legacy,
+        syncStatus:
+          legacy.syncStatus === 'PENDING_SYNC' ? 'PENDING_SYNC' : 'SYNCED',
       }
     })
 

@@ -4,7 +4,7 @@ FieldSafe is a static React prototype foundation for field inspection and equipm
 
 ## Current scope
 
-The application currently includes its visual foundation, typed operational domain data, deterministic demo records, repository contracts, device-local browser persistence, simulated role-based authentication, and the end-to-end Inspector inspection workflow. It intentionally contains no production authentication, production scanning or camera capture, offline synchronization, Supervisor/Manager/Gate workflows, analytics, or API integration.
+The application currently includes its visual foundation, typed operational domain data, deterministic demo records, repository contracts, device-local browser persistence, simulated role-based authentication, the end-to-end Inspector inspection workflow, simulated offline submission and synchronization, Supervisor review and corrective-action workflows, read-only Manager visibility, and the public Gate Check experience. It intentionally contains no production authentication, production scanning or camera capture, production offline infrastructure, backend/API integration, Technician application, or return-to-service workflow.
 
 ## Architecture direction
 
@@ -47,6 +47,10 @@ In-progress responses, defect details, evidence references, and normalized signa
 
 Photo evidence is simulated with the project-local `/evidence/hydraulic-hose-damage.png` asset. Operational storage contains only its small reference object, never image bytes.
 
+## Simulated offline behavior
+
+The Inspector header provides a deterministic Online/Offline demo toggle. Drafts and completed inspections continue to use the existing browser repository while Offline. An offline submission is persisted as `PENDING_SYNC`; returning Online presents a simulated syncing transition and persists the inspection as `SYNCED`. This prototype behavior does not use network detection, a service worker, IndexedDB, background sync, or a backend.
+
 ## Scripts
 
 - `npm run dev` — start the Vite development server
@@ -54,3 +58,15 @@ Photo evidence is simulated with the project-local `/evidence/hydraulic-hose-dam
 - `npm test` — validate seed consistency and persistence behavior
 - `npm run build` — type-check and create the production build
 - `npm run preview` — preview the production build
+
+## Netlify deployment
+
+FieldSafe deploys as a static Vite single-page application. The repository-level `netlify.toml` defines the complete Netlify configuration:
+
+- Build command: `npm run build`
+- Publish directory: `dist`
+- SPA fallback: all unmatched paths rewrite to `/index.html` with a `200` response
+
+The fallback allows BrowserRouter routes such as `/login`, `/inspector/profile`, `/supervisor/reviews`, `/manager/equipment/:id`, and `/gate` to load or refresh directly without returning a Netlify 404. Files in `public`, including `/evidence/hydraulic-hose-damage.png`, are copied into the production output by Vite.
+
+No deployment environment variables, backend services, or Netlify Functions are required. Operational data and the active demo session remain in browser `localStorage`; they are specific to the deployed origin and browser, so local development data does not transfer to a Netlify deployment.

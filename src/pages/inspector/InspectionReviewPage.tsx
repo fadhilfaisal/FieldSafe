@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowLeft, Check, ClipboardCheck, Send, X } from 'lucide
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
+import { useConnectivity } from '../../connectivity/useConnectivity'
 import { Button } from '../../components/common/Button'
 import { Card } from '../../components/common/Card'
 import { EmptyState } from '../../components/common/EmptyState'
@@ -24,6 +25,7 @@ interface ReviewState {
 export function InspectionReviewPage() {
   const { id } = useParams()
   const { user } = useAuth()
+  const { connectivity } = useConnectivity()
   const navigate = useNavigate()
   const [state, setState] = useState<ReviewState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -84,7 +86,7 @@ export function InspectionReviewPage() {
     setSubmitting(true)
     setMutationError('')
     try {
-      await inspectionService.submitInspection(id, user.id)
+      await inspectionService.submitInspection(id, user.id, connectivity)
       navigate(`/inspector/inspection/${id}/result`, { replace: true })
     } catch (submitError) {
       setMutationError(

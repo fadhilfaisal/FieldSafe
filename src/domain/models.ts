@@ -49,6 +49,8 @@ export interface ChecklistItem {
 export type InspectionStatus = 'Assigned' | 'In Progress' | 'Completed'
 export type InspectionResult = 'Pass' | 'Fail'
 export type InspectionReviewStatus = 'Pending Review' | 'Reviewed'
+export type InspectionSyncStatus = 'SYNCED' | 'PENDING_SYNC'
+export type SimulatedConnectivityState = 'ONLINE' | 'OFFLINE'
 
 export interface SignaturePoint {
   x: number
@@ -72,6 +74,7 @@ export interface Inspection {
   completedAt: IsoDateTime | null
   submittedAt: IsoDateTime | null
   signature: SignatureData | null
+  syncStatus: InspectionSyncStatus
   reviewStatus: InspectionReviewStatus | null
   reviewedAt: IsoDateTime | null
   reviewedByUserId: EntityId | null
@@ -147,6 +150,7 @@ export interface CorrectiveAction {
 }
 
 export interface OperationalData {
+  simulatedConnectivity: SimulatedConnectivityState
   users: User[]
   equipment: Equipment[]
   checklists: Checklist[]

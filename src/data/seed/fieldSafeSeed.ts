@@ -242,6 +242,7 @@ export function createSeedAssignedInspections(
       completedAt: null,
       submittedAt: null,
       signature: null,
+      syncStatus: 'SYNCED',
       reviewStatus: null,
       reviewedAt: null,
       reviewedByUserId: null,
@@ -296,6 +297,7 @@ export function createFieldSafeSeedData(): OperationalData {
       completedAt,
       submittedAt: completedAt,
       signature: null,
+      syncStatus: 'SYNCED',
       reviewStatus: index < 8 ? 'Pending Review' : 'Reviewed',
       reviewedAt: index < 8 ? null : completedAt,
       reviewedByUserId: index < 8 ? null : 'USR-SUP-001',
@@ -370,6 +372,7 @@ export function createFieldSafeSeedData(): OperationalData {
   })
 
   return {
+    simulatedConnectivity: 'ONLINE',
     users: structuredClone(users),
     equipment,
     checklists: structuredClone(checklists),

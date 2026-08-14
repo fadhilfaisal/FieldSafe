@@ -1,4 +1,5 @@
-import { CheckCircle2, Home, XCircle } from 'lucide-react'
+import { CheckCircle2, CloudOff, Home, XCircle } from 'lucide-react'
+import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { Button } from '../../components/common/Button'
@@ -6,13 +7,20 @@ import { Card } from '../../components/common/Card'
 import { EmptyState } from '../../components/common/EmptyState'
 import { StatusBadge } from '../../components/common/StatusBadge'
 import { LoadingState } from '../../components/feedback/LoadingState'
+import { SyncStatusBadge } from '../../components/inspection/SyncStatusBadge'
+import { useConnectivity } from '../../connectivity/useConnectivity'
 import { useInspectionWorkspace } from '../../hooks/useInspectionWorkspace'
 
 export function InspectionResultPage() {
   const { id } = useParams()
   const { user } = useAuth()
+  const { syncActivity } = useConnectivity()
   const navigate = useNavigate()
-  const { workspace, loading, error } = useInspectionWorkspace(id, user?.id)
+  const { workspace, loading, error, reload } = useInspectionWorkspace(id, user?.id)
+
+  useEffect(() => {
+    if (syncActivity === 'SYNCED') void reload(true)
+  }, [reload, syncActivity])
 
   if (loading) return <LoadingState label="Loading submission result…" />
   if (error || !workspace || workspace.inspection.status !== 'Completed') {
@@ -24,6 +32,7 @@ export function InspectionResultPage() {
   }
 
   const passed = workspace.inspection.result === 'Pass'
+  const pendingSync = workspace.inspection.syncStatus === 'PENDING_SYNC'
   const criticalCount = workspace.defects.filter((defect) => defect.severity === 'Critical').length
 
   return (
@@ -35,6 +44,16 @@ export function InspectionResultPage() {
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Inspection Submitted</h1>
       <p className="mt-3 text-sm text-slate-600">{workspace.equipment.assetCode} · {workspace.equipment.name}</p>
 
+      {pendingSync ? (
+        <div
+          className="mt-6 flex items-center justify-center gap-3 rounded-xl border border-warning-100 bg-warning-50 p-4 text-sm font-bold text-warning-800"
+          role="status"
+        >
+          <CloudOff aria-hidden="true" className="size-5 shrink-0" />
+          Saved offline — waiting to sync
+        </div>
+      ) : null}
+
       <Card className="mt-7 p-5 sm:p-6">
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-xl bg-slate-50 p-4">
@@ -45,6 +64,9 @@ export function InspectionResultPage() {
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Equipment</p>
             <div className="mt-3"><StatusBadge status={workspace.equipment.status} /></div>
           </div>
+        </div>
+        <div className="mt-4 flex justify-center">
+          <SyncStatusBadge status={workspace.inspection.syncStatus} />
         </div>
         {!passed ? (
           <p className="mt-5 text-sm font-semibold leading-6 text-danger-700">

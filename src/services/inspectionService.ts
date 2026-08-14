@@ -8,6 +8,7 @@ import type {
   Equipment,
   Inspection,
   InspectionDraft,
+  SimulatedConnectivityState,
   SignatureData,
 } from '../domain/models'
 import {
@@ -371,6 +372,7 @@ export class InspectionService {
   async submitInspection(
     inspectionId: string,
     inspectorId: string,
+    connectivity: SimulatedConnectivityState = 'ONLINE',
   ): Promise<InspectionSubmissionResult> {
     const workspace = await this.getWorkspace(inspectionId, inspectorId)
     this.assertEditable(workspace.inspection)
@@ -438,6 +440,7 @@ export class InspectionService {
       completedAt: submittedAt,
       submittedAt,
       signature: workspace.draft.signature,
+      syncStatus: connectivity === 'OFFLINE' ? 'PENDING_SYNC' : 'SYNCED',
       reviewStatus: 'Pending Review',
       reviewedAt: null,
       reviewedByUserId: null,

@@ -7,9 +7,11 @@ import {
 } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
+import { ConnectivityProvider } from '../../connectivity/ConnectivityProvider'
 import { getInitials } from '../../utils/identity'
 import { cn } from '../../utils/cn'
-import { ConnectivityIndicator } from '../common/ConnectivityIndicator'
+import { ConnectivityControl } from '../inspection/ConnectivityControl'
+import { ConnectivityNotice } from '../inspection/ConnectivityNotice'
 import { BrandMark } from './BrandMark'
 
 const navigation = [
@@ -20,6 +22,14 @@ const navigation = [
 ]
 
 export function FieldShell() {
+  return (
+    <ConnectivityProvider>
+      <FieldShellContent />
+    </ConnectivityProvider>
+  )
+}
+
+function FieldShellContent() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -34,7 +44,7 @@ export function FieldShell() {
         <header className="flex min-h-16 items-center justify-between gap-3 border-b border-navy-800 bg-navy-900 px-4 text-white sm:px-6">
           <BrandMark inverted />
           <div className="flex items-center gap-2">
-            <ConnectivityIndicator inverted />
+            <ConnectivityControl />
             <div className="flex min-h-10 items-center gap-2 border-l border-white/15 pl-3">
               <span className="hidden text-right sm:block">
                 <span className="block text-xs font-semibold text-white">{user?.name}</span>
@@ -60,6 +70,7 @@ export function FieldShell() {
         </header>
 
         <main className="subtle-grid flex-1 overflow-y-auto bg-slate-25 px-4 py-6 pb-28 sm:px-6 sm:py-8 sm:pb-28 lg:px-10">
+          <ConnectivityNotice />
           <Outlet />
         </main>
 
