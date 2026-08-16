@@ -1,15 +1,17 @@
 import { ArrowLeft, CheckCircle2, ShieldAlert, Wrench } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { useAuth } from '../../auth/useAuth'
 import { Button } from '../../components/common/Button'
 import { Card } from '../../components/common/Card'
+import { ConfirmationDialog } from '../../components/common/ConfirmationDialog'
 import { EmptyState } from '../../components/common/EmptyState'
 import { PageHeader } from '../../components/common/PageHeader'
 import { SeverityBadge } from '../../components/common/SeverityBadge'
 import { StatusBadge } from '../../components/common/StatusBadge'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { EvidencePreview } from '../../components/inspection/EvidencePreview'
-import { ActionStatusBadge, OverdueBadge } from '../../components/supervisor/WorkflowBadges'
+import { ActionStatusBadge, DefectStatusBadge, OverdueBadge } from '../../components/supervisor/WorkflowBadges'
 import type { CorrectiveActionStatus } from '../../domain/models'
 import {
   supervisorService,
@@ -19,10 +21,13 @@ import { formatDate, formatDateTime } from '../../utils/format'
 
 export function SupervisorActionDetailPage() {
   const { id } = useParams()
+  const { user } = useAuth()
   const [item, setItem] = useState<SupervisorActionListItem | null>(null)
   const [status, setStatus] = useState<CorrectiveActionStatus>('Open')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [resolving, setResolving] = useState(false)
+  const [confirmingResolution, setConfirmingResolution] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
@@ -60,6 +65,32 @@ export function SupervisorActionDetailPage() {
     }
   }
 
+  async function verifyAndResolve() {
+    if (!id || !user) return
+    setResolving(true)
+    setError('')
+    try {
+      const resolution = await supervisorService.verifyAndResolveDefect(
+        id,
+        user.id,
+      )
+      setNotice(
+        `Defect verified and resolved. Equipment is now ${resolution.equipment.status}.`,
+      )
+      setConfirmingResolution(false)
+      await load()
+    } catch (resolutionError) {
+      setConfirmingResolution(false)
+      setError(
+        resolutionError instanceof Error
+          ? resolutionError.message
+          : 'Unable to verify and resolve this defect.',
+      )
+    } finally {
+      setResolving(false)
+    }
+  }
+
   if (loading) return <LoadingState label="Loading corrective action…" />
   if (error && !item) return <Card><EmptyState icon={Wrench} title="Corrective action not found" description={error} /></Card>
   if (!item) return null
@@ -94,6 +125,9 @@ export function SupervisorActionDetailPage() {
               </select>
               <Button onClick={() => void saveStatus()} disabled={saving || status === item.action.status}>{saving ? 'Saving…' : 'Update Status'}</Button>
             </div>
+            <p className="mt-3 text-xs leading-5 text-slate-500">
+              Done records that corrective work is complete. It does not resolve the defect or verify the equipment as safe.
+            </p>
           </div>
         </Card>
 
@@ -109,7 +143,34 @@ export function SupervisorActionDetailPage() {
             <h2 className="text-lg font-bold text-slate-950">Originating defect</h2>
             <p className="mt-3 text-sm font-bold text-slate-900">{item.defect.title}</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">{item.defect.description}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2"><SeverityBadge severity={item.defect.severity} /><span className="text-xs font-bold text-slate-600">{item.defect.status}</span></div>
+            <div className="mt-3 flex flex-wrap items-center gap-2"><SeverityBadge severity={item.defect.severity} /><DefectStatusBadge status={item.defect.status} /></div>
+            {item.defect.status === 'Resolved' ? (
+              <div className="mt-4 rounded-lg border border-success-100 bg-success-50 p-3 text-sm text-success-700">
+                <p className="font-bold">Remediation verified</p>
+                <p className="mt-1 text-xs leading-5">
+                  Resolved {formatDateTime(item.defect.resolvedAt)}
+                  {item.resolver ? ` by ${item.resolver.name}` : ''}.
+                </p>
+              </div>
+            ) : item.action.status === 'Done' ? (
+              <div className="mt-4 rounded-lg border border-warning-100 bg-warning-50 p-3 text-sm text-warning-800">
+                <p className="font-bold">Corrective work complete — verification required</p>
+                <p className="mt-1 text-xs leading-5">
+                  The originating defect remains unresolved and equipment safety remains defect-driven.
+                </p>
+                <Button
+                  className="mt-3 w-full"
+                  onClick={() => setConfirmingResolution(true)}
+                >
+                  <CheckCircle2 aria-hidden="true" className="size-4" />
+                  Verify &amp; Resolve Defect
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs font-semibold leading-5 text-slate-600">
+                This defect remains unresolved. Complete the corrective action before Supervisor verification.
+              </p>
+            )}
             {item.defect.evidenceReference ? <EvidencePreview evidence={item.defect.evidenceReference} alt="Originating defect evidence" className="mt-4 h-32 w-full rounded-lg object-cover" /> : null}
             <Link to={`/supervisor/reviews/${item.inspection.id}`} className="mt-4 inline-flex min-h-10 items-center text-sm font-bold text-brand-700 hover:text-brand-600">Open originating inspection</Link>
           </Card>
@@ -120,6 +181,17 @@ export function SupervisorActionDetailPage() {
         <ShieldAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
         <p><span className="font-bold">Safety state remains defect-driven.</span> Updating this action, including marking it Done, does not resolve the defect or return equipment to service.</p>
       </div>
+
+      <ConfirmationDialog
+        open={confirmingResolution}
+        title="Verify remediation and resolve defect?"
+        description="Confirm that the completed corrective work has been verified and the originating defect is no longer present. Resolving this defect will recalculate the equipment's safety state from all remaining unresolved defects."
+        confirmLabel="Verify & Resolve"
+        busyLabel="Verifying remediation…"
+        busy={resolving}
+        onCancel={() => setConfirmingResolution(false)}
+        onConfirm={() => void verifyAndResolve()}
+      />
     </div>
   )
 }

@@ -336,6 +336,7 @@ export function createFieldSafeSeedData(): OperationalData {
         status: failure.defectStatus,
         reportedAt: completedAt,
         resolvedAt,
+        resolvedByUserId: resolvedAt ? 'USR-SUP-001' : null,
       })
 
       correctiveActions.push({

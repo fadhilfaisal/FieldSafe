@@ -13,7 +13,12 @@ import {
   type PersistedOperationalData,
 } from '../src/repositories/browserFieldSafeRepository'
 import { InspectionService } from '../src/services/inspectionService'
-import { SupervisorService } from '../src/services/supervisorService'
+import { GateService } from '../src/services/gateService'
+import { ManagerService } from '../src/services/managerService'
+import {
+  SupervisorReviewConfirmationRequired,
+  SupervisorService,
+} from '../src/services/supervisorService'
 import { BrowserStorageAdapter } from '../src/storage/browserStorageAdapter'
 import type { StorageDriver } from '../src/storage/storageAdapter'
 
@@ -52,12 +57,52 @@ function createServices(storage = new MemoryStorage()) {
   )
   return {
     auth: new AuthService(repository, sessions),
+    gate: new GateService(repository),
     inspector: new InspectionService(repository, () => NOW),
+    manager: new ManagerService(repository, () => NOW),
     repository,
     sessions,
     storage,
     supervisor: new SupervisorService(repository, () => NOW),
   }
+}
+
+async function submitInspectionWithDefects(
+  inspector: InspectionService,
+  severities: Array<'Minor' | 'Major' | 'Critical'>,
+  inspectionId = 'ASG-001',
+) {
+  const inspectorId = 'USR-INSP-001'
+  const workspace = await inspector.getWorkspace(inspectionId, inspectorId)
+
+  for (const [index, item] of workspace.items.entries()) {
+    const severity = severities[index]
+    if (!severity) {
+      await inspector.recordResponse(inspectionId, inspectorId, item.id, 'Pass')
+      continue
+    }
+    await inspector.recordResponse(inspectionId, inspectorId, item.id, 'Fail')
+    await inspector.updateDraftDefect(inspectionId, inspectorId, item.id, {
+      description: `${severity} defect requiring remediation verification`,
+      severity,
+      evidenceReference: structuredClone(DEMO_EVIDENCE),
+    })
+  }
+  await inspector.saveSignature(inspectionId, inspectorId, signature)
+  return inspector.submitInspection(inspectionId, inspectorId)
+}
+
+async function createActionForDefect(
+  supervisor: SupervisorService,
+  defectId: string,
+) {
+  return supervisor.createCorrectiveAction({
+    defectId,
+    description: 'Complete corrective work and prepare for verification.',
+    assignedToUserId: 'USR-TECH-001',
+    dueDate: '2026-08-21',
+    supervisorId: 'USR-SUP-001',
+  })
 }
 
 async function submitCriticalInspection(
@@ -223,6 +268,244 @@ describe('Supervisor review and corrective action service', () => {
     expect(persistedDefect?.status).toBe('Open')
     expect(persistedDefect?.resolvedAt).toBeNull()
     expect(equipment?.status).toBe('Out of Service')
+  })
+
+  it('rejects defect resolution until the related corrective action is Done', async () => {
+    const flow = createServices()
+    const submission = await submitInspectionWithDefects(flow.inspector, [
+      'Critical',
+    ])
+    const action = await createActionForDefect(
+      flow.supervisor,
+      submission.defects[0].id,
+    )
+
+    await expect(
+      flow.supervisor.verifyAndResolveDefect(action.id, 'USR-SUP-001'),
+    ).rejects.toThrow(
+      'Corrective work must be marked Done before defect verification.',
+    )
+    expect(
+      (await flow.repository.getDefects(submission.inspection.id))[0].status,
+    ).toBe('Open')
+    expect(
+      (await flow.repository.getEquipmentById(submission.equipment.id))?.status,
+    ).toBe('Out of Service')
+  })
+
+  it('verifies a completed remediation, persists provenance, and updates Gate and Manager', async () => {
+    const flow = createServices()
+    const submission = await submitInspectionWithDefects(flow.inspector, [
+      'Critical',
+    ])
+    const action = await createActionForDefect(
+      flow.supervisor,
+      submission.defects[0].id,
+    )
+    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+
+    expect(
+      (await flow.gate.checkEquipment(submission.equipment.id)).decision,
+    ).toBe('Denied')
+    const resolution = await flow.supervisor.verifyAndResolveDefect(
+      action.id,
+      'USR-SUP-001',
+    )
+
+    expect(resolution.defect).toMatchObject({
+      status: 'Resolved',
+      resolvedAt: NOW,
+      resolvedByUserId: 'USR-SUP-001',
+    })
+    expect(resolution.equipment.status).toBe('Fit')
+    expect(
+      (await flow.gate.checkEquipment(submission.equipment.id)).decision,
+    ).toBe('Allowed')
+    expect(
+      (
+        await flow.manager.getEquipmentBoard()
+      ).find((item) => item.equipment.id === submission.equipment.id)?.status,
+    ).toBe('Fit')
+
+    const reconstructed = createServices(flow.storage)
+    expect(
+      (
+        await reconstructed.repository.getDefects(submission.inspection.id)
+      )[0],
+    ).toMatchObject({
+      status: 'Resolved',
+      resolvedAt: NOW,
+      resolvedByUserId: 'USR-SUP-001',
+    })
+    expect(
+      (await reconstructed.gate.checkEquipment(submission.equipment.id))
+        .decision,
+    ).toBe('Allowed')
+  })
+
+  it('recalculates to Restricted when a Major defect remains unresolved', async () => {
+    const flow = createServices()
+    const submission = await submitInspectionWithDefects(flow.inspector, [
+      'Critical',
+      'Major',
+    ])
+    const criticalDefect = submission.defects.find(
+      (defect) => defect.severity === 'Critical',
+    )!
+    const action = await createActionForDefect(
+      flow.supervisor,
+      criticalDefect.id,
+    )
+    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+
+    const resolution = await flow.supervisor.verifyAndResolveDefect(
+      action.id,
+      'USR-SUP-001',
+    )
+
+    expect(resolution.equipment.status).toBe('Restricted')
+    expect(
+      (await flow.gate.checkEquipment(submission.equipment.id)).decision,
+    ).toBe('Restricted')
+  })
+
+  it('remains Out of Service when another Critical defect is unresolved', async () => {
+    const flow = createServices()
+    const submission = await submitInspectionWithDefects(flow.inspector, [
+      'Critical',
+      'Critical',
+    ])
+    const action = await createActionForDefect(
+      flow.supervisor,
+      submission.defects[0].id,
+    )
+    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+
+    const resolution = await flow.supervisor.verifyAndResolveDefect(
+      action.id,
+      'USR-SUP-001',
+    )
+
+    expect(resolution.equipment.status).toBe('Out of Service')
+    expect(
+      (await flow.gate.checkEquipment(submission.equipment.id)).decision,
+    ).toBe('Denied')
+  })
+
+  it('rejects a duplicate defect resolution without changing persisted state', async () => {
+    const flow = createServices()
+    const submission = await submitInspectionWithDefects(flow.inspector, [
+      'Critical',
+    ])
+    const action = await createActionForDefect(
+      flow.supervisor,
+      submission.defects[0].id,
+    )
+    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+    await flow.supervisor.verifyAndResolveDefect(action.id, 'USR-SUP-001')
+    const before = flow.storage.getItem(OPERATIONAL_KEY)
+
+    await expect(
+      flow.supervisor.verifyAndResolveDefect(action.id, 'USR-SUP-001'),
+    ).rejects.toThrow('This defect has already been resolved.')
+    expect(flow.storage.getItem(OPERATIONAL_KEY)).toBe(before)
+  })
+
+  it('warns before review acknowledgement but preserves remediation recovery after Review', async () => {
+    const flow = createServices()
+    const submission = await submitInspectionWithDefects(flow.inspector, [
+      'Critical',
+    ])
+
+    await expect(
+      flow.supervisor.markReviewReviewed(
+        submission.inspection.id,
+        'USR-SUP-001',
+      ),
+    ).rejects.toBeInstanceOf(SupervisorReviewConfirmationRequired)
+    expect(
+      (await flow.repository.getInspectionById(submission.inspection.id))
+        ?.reviewStatus,
+    ).toBe('Pending Review')
+
+    await flow.supervisor.markReviewReviewed(
+      submission.inspection.id,
+      'USR-SUP-001',
+      true,
+    )
+    const reviewedWithoutAction = await flow.supervisor.getReviewDetail(
+      submission.inspection.id,
+    )
+    expect(reviewedWithoutAction.inspection.reviewStatus).toBe('Reviewed')
+    expect(reviewedWithoutAction.unassignedUnresolvedDefectCount).toBe(1)
+    expect(reviewedWithoutAction.actions).toHaveLength(0)
+
+    const action = await createActionForDefect(
+      flow.supervisor,
+      submission.defects[0].id,
+    )
+    const recoveredReview = await flow.supervisor.getReviewDetail(
+      submission.inspection.id,
+    )
+    expect(recoveredReview.actions.map((item) => item.id)).toContain(action.id)
+    expect(recoveredReview.unassignedUnresolvedDefectCount).toBe(0)
+  })
+
+  it('does not permit duplicate remediation for a resolved reviewed defect', async () => {
+    const flow = createServices()
+    const submission = await submitInspectionWithDefects(flow.inspector, [
+      'Critical',
+    ])
+    await flow.supervisor.markReviewReviewed(
+      submission.inspection.id,
+      'USR-SUP-001',
+      true,
+    )
+    const action = await createActionForDefect(
+      flow.supervisor,
+      submission.defects[0].id,
+    )
+    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+    await flow.supervisor.verifyAndResolveDefect(action.id, 'USR-SUP-001')
+
+    const reviewed = await flow.supervisor.getReviewDetail(
+      submission.inspection.id,
+    )
+    expect(reviewed.responses.find((item) => item.defect)?.defect?.status).toBe(
+      'Resolved',
+    )
+    await expect(
+      createActionForDefect(flow.supervisor, submission.defects[0].id),
+    ).rejects.toThrow('Open defect not found.')
+  })
+
+  it('Demo Reset removes test-time resolutions and restores deterministic baseline', async () => {
+    const flow = createServices()
+    const baselineEquipment = await flow.repository.getEquipmentById('EQ-014')
+    const submission = await submitInspectionWithDefects(flow.inspector, [
+      'Critical',
+    ])
+    const action = await createActionForDefect(
+      flow.supervisor,
+      submission.defects[0].id,
+    )
+    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+    await flow.supervisor.verifyAndResolveDefect(action.id, 'USR-SUP-001')
+
+    await flow.repository.resetDemoData()
+
+    expect(await flow.repository.getInspectionById('ASG-001')).toMatchObject({
+      status: 'Assigned',
+      result: null,
+    })
+    expect(
+      (await flow.repository.getDefects()).some(
+        (defect) => defect.id === submission.defects[0].id,
+      ),
+    ).toBe(false)
+    expect(await flow.repository.getEquipmentById('EQ-014')).toEqual(
+      baselineEquipment,
+    )
   })
 
   it('preserves Supervisor operational changes across logout and login', async () => {

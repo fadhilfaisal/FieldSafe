@@ -118,6 +118,9 @@ describe('deterministic FieldSafe seed data', () => {
       const action = seed.correctiveActions.find((item) => item.defectId === defect.id)
       expect(action?.equipmentId).toBe(defect.equipmentId)
       expect(action?.status === 'Done').toBe(defect.status === 'Resolved')
+      expect(defect.resolvedByUserId === 'USR-SUP-001').toBe(
+        defect.status === 'Resolved',
+      )
     }
   })
 })
@@ -298,6 +301,27 @@ describe('BrowserFieldSafeRepository persistence', () => {
     expect(
       (await repository.getInspections()).every(
         (inspection) => inspection.syncStatus === 'SYNCED',
+      ),
+    ).toBe(true)
+  })
+
+  it('migrates version-four defects without inventing resolver provenance', async () => {
+    const storage = new MemoryStorage()
+    const { adapter, repository } = createRepository(storage)
+    const versionFourData = createFieldSafeSeedData()
+    versionFourData.defects = versionFourData.defects.map((defect) => {
+      const legacy = { ...defect } as Record<string, unknown>
+      delete legacy.resolvedByUserId
+      return legacy as unknown as typeof defect
+    })
+    adapter.write({ schemaVersion: 4, data: versionFourData })
+
+    await repository.initialize()
+
+    expect(adapter.read()?.schemaVersion).toBe(OPERATIONAL_DATA_SCHEMA_VERSION)
+    expect(
+      (await repository.getDefects()).every(
+        (defect) => defect.resolvedByUserId === null,
       ),
     ).toBe(true)
   })

@@ -18,6 +18,11 @@ export interface InspectionSubmissionPersistence {
   equipment: Equipment
 }
 
+export interface DefectResolutionPersistence {
+  defect: Defect
+  equipment: Equipment
+}
+
 export interface FieldSafeRepository {
   initialize(): Promise<void>
   getUsers(): Promise<User[]>
@@ -43,6 +48,9 @@ export interface FieldSafeRepository {
   saveInspectionDraft(draft: InspectionDraft): Promise<InspectionDraft>
   commitInspectionSubmission(
     submission: InspectionSubmissionPersistence,
+  ): Promise<void>
+  commitDefectResolution(
+    resolution: DefectResolutionPersistence,
   ): Promise<void>
   resetDemoData(): Promise<void>
 }

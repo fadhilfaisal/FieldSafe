@@ -4,7 +4,7 @@ FieldSafe is a static React prototype foundation for field inspection and equipm
 
 ## Current scope
 
-The application currently includes its visual foundation, typed operational domain data, deterministic demo records, repository contracts, device-local browser persistence, simulated role-based authentication, the end-to-end Inspector inspection workflow, simulated offline submission and synchronization, Supervisor review and corrective-action workflows, read-only Manager visibility, and the public Gate Check experience. It intentionally contains no production authentication, production scanning or camera capture, production offline infrastructure, backend/API integration, Technician application, or return-to-service workflow.
+The application currently includes its visual foundation, typed operational domain data, deterministic demo records, repository contracts, device-local browser persistence, simulated role-based authentication, the end-to-end Inspector inspection workflow, simulated offline submission and synchronization, Supervisor review, corrective-action, and verified defect-resolution workflows, read-only Manager visibility, and the public Gate Check experience. It intentionally contains no production authentication, production scanning or camera capture, production offline infrastructure, backend/API integration, or Technician application.
 
 ## Architecture direction
 
@@ -50,6 +50,10 @@ Photo evidence is simulated with the project-local `/evidence/hydraulic-hose-dam
 ## Simulated offline behavior
 
 The Inspector header provides a deterministic Online/Offline demo toggle. Drafts and completed inspections continue to use the existing browser repository while Offline. An offline submission is persisted as `PENDING_SYNC`; returning Online presents a simulated syncing transition and persists the inspection as `SYNCED`. This prototype behavior does not use network detection, a service worker, IndexedDB, background sync, or a backend.
+
+## Supervisor remediation lifecycle
+
+Inspection review, corrective work, and defect resolution remain separate persisted lifecycles. Marking a corrective action `Done` records only that its work is complete. An active Supervisor must explicitly verify the completed remediation before the originating defect becomes `Resolved`. That atomic resolution records its timestamp and Supervisor, then recalculates equipment safety from every remaining unresolved defect through the canonical safety helper. Reviewed inspections remain available for later corrective-action assignment when acknowledgement occurred before remediation planning.
 
 ## Scripts
 

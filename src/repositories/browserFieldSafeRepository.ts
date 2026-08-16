@@ -18,9 +18,12 @@ import type {
 } from '../domain/models'
 import type { StorageAdapter } from '../storage/storageAdapter'
 import type { FieldSafeRepository } from './fieldSafeRepository'
-import type { InspectionSubmissionPersistence } from './fieldSafeRepository'
+import type {
+  DefectResolutionPersistence,
+  InspectionSubmissionPersistence,
+} from './fieldSafeRepository'
 
-export const OPERATIONAL_DATA_SCHEMA_VERSION = 4 as const
+export const OPERATIONAL_DATA_SCHEMA_VERSION = 5 as const
 
 export interface PersistedOperationalData {
   schemaVersion: number
@@ -69,8 +72,10 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
 
     if (persisted.schemaVersion === 1) {
       this.writeData(
-        this.migrateVersionThree(
-          this.migrateVersionTwo(this.migrateVersionOne(persisted.data)),
+        this.migrateVersionFour(
+          this.migrateVersionThree(
+            this.migrateVersionTwo(this.migrateVersionOne(persisted.data)),
+          ),
         ),
       )
       return
@@ -78,13 +83,22 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
 
     if (persisted.schemaVersion === 2) {
       this.writeData(
-        this.migrateVersionThree(this.migrateVersionTwo(persisted.data)),
+        this.migrateVersionFour(
+          this.migrateVersionThree(this.migrateVersionTwo(persisted.data)),
+        ),
       )
       return
     }
 
     if (persisted.schemaVersion === 3) {
-      this.writeData(this.migrateVersionThree(persisted.data))
+      this.writeData(
+        this.migrateVersionFour(this.migrateVersionThree(persisted.data)),
+      )
+      return
+    }
+
+    if (persisted.schemaVersion === 4) {
+      this.writeData(this.migrateVersionFour(persisted.data))
       return
     }
 
@@ -283,6 +297,40 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
     this.writeData(data)
   }
 
+  async commitDefectResolution(resolution: DefectResolutionPersistence) {
+    const data = await this.readData()
+    const defectIndex = data.defects.findIndex(
+      (item) => item.id === resolution.defect.id,
+    )
+    const equipmentIndex = data.equipment.findIndex(
+      (item) => item.id === resolution.equipment.id,
+    )
+
+    if (defectIndex === -1 || equipmentIndex === -1) {
+      throw new Error('Cannot resolve a defect with missing core records.')
+    }
+    if (data.defects[defectIndex].status === 'Resolved') {
+      throw new Error('This defect has already been resolved.')
+    }
+    if (
+      resolution.defect.status !== 'Resolved' ||
+      !resolution.defect.resolvedAt ||
+      !resolution.defect.resolvedByUserId
+    ) {
+      throw new Error('Defect resolution verification metadata is incomplete.')
+    }
+    if (
+      resolution.defect.equipmentId !== resolution.equipment.id ||
+      data.defects[defectIndex].equipmentId !== resolution.equipment.id
+    ) {
+      throw new Error('Defect resolution equipment does not match.')
+    }
+
+    data.defects[defectIndex] = clone(resolution.defect)
+    data.equipment[equipmentIndex] = clone(resolution.equipment)
+    this.writeData(data)
+  }
+
   async resetDemoData() {
     this.writeSeedData()
   }
@@ -427,6 +475,20 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
       }
     })
 
+    return migrated
+  }
+
+  private migrateVersionFour(data: OperationalData): OperationalData {
+    const migrated = clone(data)
+    migrated.defects = migrated.defects.map((defect) => {
+      const legacy = defect as Defect & {
+        resolvedByUserId?: Defect['resolvedByUserId']
+      }
+      return {
+        ...legacy,
+        resolvedByUserId: legacy.resolvedByUserId ?? null,
+      }
+    })
     return migrated
   }
 }

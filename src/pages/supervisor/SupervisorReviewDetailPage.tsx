@@ -12,6 +12,7 @@ import { Link, useParams } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { Button } from '../../components/common/Button'
 import { Card } from '../../components/common/Card'
+import { ConfirmationDialog } from '../../components/common/ConfirmationDialog'
 import { EmptyState } from '../../components/common/EmptyState'
 import { PageHeader } from '../../components/common/PageHeader'
 import { SeverityBadge } from '../../components/common/SeverityBadge'
@@ -19,9 +20,10 @@ import { StatusBadge } from '../../components/common/StatusBadge'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { EvidencePreview } from '../../components/inspection/EvidencePreview'
 import { CorrectiveActionForm } from '../../components/supervisor/CorrectiveActionForm'
-import { ReviewStatusBadge } from '../../components/supervisor/WorkflowBadges'
+import { DefectStatusBadge, ReviewStatusBadge } from '../../components/supervisor/WorkflowBadges'
 import type { User } from '../../domain/models'
 import {
+  SupervisorReviewConfirmationRequired,
   supervisorService,
   type SupervisorReviewDetail,
 } from '../../services/supervisorService'
@@ -37,6 +39,8 @@ export function SupervisorReviewDetailPage() {
   const [mutationError, setMutationError] = useState('')
   const [creatingFor, setCreatingFor] = useState('')
   const [marking, setMarking] = useState(false)
+  const [confirmingReview, setConfirmingReview] = useState(false)
+  const [confirmationCount, setConfirmationCount] = useState(0)
   const [notice, setNotice] = useState('')
 
   const load = useCallback(async () => {
@@ -61,19 +65,38 @@ export function SupervisorReviewDetailPage() {
     void load()
   }, [load])
 
-  async function markReviewed() {
+  async function markReviewed(acknowledgeUnassignedDefects = false) {
     if (!id || !user) return
     setMarking(true)
     setMutationError('')
     try {
-      await supervisorService.markReviewReviewed(id, user.id)
+      await supervisorService.markReviewReviewed(
+        id,
+        user.id,
+        acknowledgeUnassignedDefects,
+      )
       setNotice('Inspection review marked as reviewed.')
+      setConfirmingReview(false)
       await load()
     } catch (markError) {
+      if (markError instanceof SupervisorReviewConfirmationRequired) {
+        setConfirmationCount(markError.unassignedDefectCount)
+        setConfirmingReview(true)
+        return
+      }
       setMutationError(markError instanceof Error ? markError.message : 'Unable to update review status.')
     } finally {
       setMarking(false)
     }
+  }
+
+  function requestMarkReviewed() {
+    if (review?.unassignedUnresolvedDefectCount) {
+      setConfirmationCount(review.unassignedUnresolvedDefectCount)
+      setConfirmingReview(true)
+      return
+    }
+    void markReviewed()
   }
 
   async function createAction(
@@ -155,7 +178,7 @@ export function SupervisorReviewDetailPage() {
           <div><p className="text-xs font-semibold text-slate-500">Signature</p><p className="mt-1 inline-flex items-center gap-2 text-sm font-bold text-slate-900"><PenLine aria-hidden="true" className="size-4 text-brand-700" />{signed ? 'Inspector signed' : 'Legacy record — not captured'}</p></div>
         </div>
         {review.inspection.reviewStatus === 'Pending Review' ? (
-          <Button className="mt-5" onClick={() => void markReviewed()} disabled={marking}>
+          <Button className="mt-5" onClick={requestMarkReviewed} disabled={marking}>
             <CheckCircle2 aria-hidden="true" className="size-4" />
             {marking ? 'Marking reviewed…' : 'Mark Review as Reviewed'}
           </Button>
@@ -213,12 +236,25 @@ export function SupervisorReviewDetailPage() {
                 <div>
                   <p className="text-sm font-semibold text-slate-800">{item.prompt}</p>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{defect.description}</p>
-                  <p className="mt-3 text-xs text-slate-500">Reported {formatDateTime(defect.reportedAt)} · Defect status: <span className="font-bold text-slate-700">{defect.status}</span></p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span>Reported {formatDateTime(defect.reportedAt)}</span>
+                    <DefectStatusBadge status={defect.status} />
+                  </div>
                 </div>
                 {defect.evidenceReference ? <EvidencePreview evidence={defect.evidenceReference} alt={`Evidence for ${item.category}`} className="h-36 w-full rounded-lg object-cover" /> : <div className="flex h-36 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-500">No evidence attached</div>}
               </div>
               <div className="border-t border-slate-200 bg-slate-50 p-5">
-                {existingAction ? (
+                {defect.status === 'Resolved' ? (
+                  <div className="flex items-start gap-3 rounded-lg border border-success-100 bg-success-50 p-4 text-success-700">
+                    <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-bold">Defect remediation verified</p>
+                      <p className="mt-1 text-xs leading-5">
+                        Resolved {formatDateTime(defect.resolvedAt)}. No new corrective action is required.
+                      </p>
+                    </div>
+                  </div>
+                ) : existingAction ? (
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div><p className="text-sm font-bold text-slate-900">Corrective action created</p><p className="mt-1 text-xs text-slate-500">{existingAction.title}</p></div>
                     <Link to={`/supervisor/actions/${existingAction.id}`} className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 hover:bg-slate-50">View action</Link>
@@ -241,6 +277,17 @@ export function SupervisorReviewDetailPage() {
           )
         })}
       </section>
+
+      <ConfirmationDialog
+        open={confirmingReview}
+        title="Mark inspection as reviewed?"
+        description={`${confirmationCount} unresolved defect${confirmationCount === 1 ? '' : 's'} ${confirmationCount === 1 ? 'has' : 'have'} no corrective action assigned. Mark this inspection as reviewed anyway?`}
+        confirmLabel="Mark Reviewed Anyway"
+        busyLabel="Marking reviewed…"
+        busy={marking}
+        onCancel={() => setConfirmingReview(false)}
+        onConfirm={() => void markReviewed(true)}
+      />
     </div>
   )
 }

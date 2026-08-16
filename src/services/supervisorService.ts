@@ -11,6 +11,7 @@ import type {
   User,
 } from '../domain/models'
 import {
+  deriveEquipmentStatus,
   getHighestDefectSeverity,
   isCorrectiveActionOverdue,
 } from '../domain/safety'
@@ -36,6 +37,7 @@ export interface SupervisorReviewResponse {
 export interface SupervisorReviewDetail extends SupervisorReviewListItem {
   responses: SupervisorReviewResponse[]
   actions: CorrectiveAction[]
+  unassignedUnresolvedDefectCount: number
 }
 
 export interface SupervisorActionListItem {
@@ -44,6 +46,7 @@ export interface SupervisorActionListItem {
   defect: Defect
   inspection: Inspection
   owner: User
+  resolver: User | null
   overdue: boolean
 }
 
@@ -68,6 +71,15 @@ export class SupervisorWorkflowError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'SupervisorWorkflowError'
+  }
+}
+
+export class SupervisorReviewConfirmationRequired extends SupervisorWorkflowError {
+  constructor(public readonly unassignedDefectCount: number) {
+    super(
+      `${unassignedDefectCount} unresolved defect${unassignedDefectCount === 1 ? '' : 's'} ${unassignedDefectCount === 1 ? 'has' : 'have'} no corrective action assigned.`,
+    )
+    this.name = 'SupervisorReviewConfirmationRequired'
   }
 }
 
@@ -184,16 +196,27 @@ export class SupervisorService {
       })
       .sort((left, right) => left.item.sequence - right.item.sequence)
 
+    const reviewActions = actions.filter((action) =>
+      defects.some((defect) => defect.id === action.defectId),
+    )
+
     return {
       ...review,
       responses: resolvedResponses,
-      actions: actions.filter((action) =>
-        defects.some((defect) => defect.id === action.defectId),
-      ),
+      actions: reviewActions,
+      unassignedUnresolvedDefectCount: defects.filter(
+        (defect) =>
+          defect.status !== 'Resolved' &&
+          !reviewActions.some((action) => action.defectId === defect.id),
+      ).length,
     }
   }
 
-  async markReviewReviewed(inspectionId: string, supervisorId: string) {
+  async markReviewReviewed(
+    inspectionId: string,
+    supervisorId: string,
+    acknowledgeUnassignedDefects = false,
+  ) {
     const inspection = await this.repository.getInspectionById(inspectionId)
     if (!inspection || inspection.status !== 'Completed') {
       throw new SupervisorWorkflowError('Inspection review not found.')
@@ -206,6 +229,19 @@ export class SupervisorService {
       throw new SupervisorWorkflowError('Active Supervisor not found.')
     }
     if (inspection.reviewStatus === 'Reviewed') return inspection
+
+    const [defects, actions] = await Promise.all([
+      this.repository.getDefects(inspectionId),
+      this.repository.getCorrectiveActions(),
+    ])
+    const unassignedDefectCount = defects.filter(
+      (defect) =>
+        defect.status !== 'Resolved' &&
+        !actions.some((action) => action.defectId === defect.id),
+    ).length
+    if (unassignedDefectCount > 0 && !acknowledgeUnassignedDefects) {
+      throw new SupervisorReviewConfirmationRequired(unassignedDefectCount)
+    }
 
     return this.repository.saveInspection({
       ...inspection,
@@ -254,6 +290,8 @@ export class SupervisorService {
           defect,
           inspection,
           owner,
+          resolver:
+            users.find((item) => item.id === defect.resolvedByUserId) ?? null,
           overdue: isCorrectiveActionOverdue(action, asOf),
         }
       })
@@ -357,6 +395,76 @@ export class SupervisorService {
       status,
       completedAt: status === 'Done' ? this.now() : null,
     })
+  }
+
+  async verifyAndResolveDefect(actionId: string, supervisorId: string) {
+    const [action, defects, equipment, users] = await Promise.all([
+      this.repository.getCorrectiveActionById(actionId),
+      this.repository.getDefects(),
+      this.repository.getEquipment(),
+      this.repository.getUsers(),
+    ])
+    if (!action) {
+      throw new SupervisorWorkflowError('Corrective action not found.')
+    }
+    if (action.status !== 'Done') {
+      throw new SupervisorWorkflowError(
+        'Corrective work must be marked Done before defect verification.',
+      )
+    }
+
+    const defect = defects.find((item) => item.id === action.defectId)
+    if (!defect) {
+      throw new SupervisorWorkflowError('Originating defect not found.')
+    }
+    if (defect.status === 'Resolved') {
+      throw new SupervisorWorkflowError('This defect has already been resolved.')
+    }
+
+    const supervisor = users.find(
+      (user) =>
+        user.id === supervisorId &&
+        user.role === 'Supervisor' &&
+        user.isActive,
+    )
+    if (!supervisor) {
+      throw new SupervisorWorkflowError('Active Supervisor not found.')
+    }
+    const relatedEquipment = equipment.find(
+      (item) => item.id === defect.equipmentId,
+    )
+    if (!relatedEquipment) {
+      throw new SupervisorWorkflowError('Related equipment not found.')
+    }
+
+    const resolvedDefect: Defect = {
+      ...defect,
+      status: 'Resolved',
+      resolvedAt: this.now(),
+      resolvedByUserId: supervisor.id,
+    }
+    const recalculatedEquipment: Equipment = {
+      ...relatedEquipment,
+      status: deriveEquipmentStatus(
+        defects
+          .filter((item) => item.equipmentId === relatedEquipment.id)
+          .map((item) =>
+            item.id === resolvedDefect.id ? resolvedDefect : item,
+          ),
+      ),
+    }
+
+    await this.repository.commitDefectResolution({
+      defect: resolvedDefect,
+      equipment: recalculatedEquipment,
+    })
+
+    return {
+      action,
+      defect: resolvedDefect,
+      equipment: recalculatedEquipment,
+      verifiedBy: supervisor,
+    }
   }
 
   async getDashboard(): Promise<SupervisorDashboard> {

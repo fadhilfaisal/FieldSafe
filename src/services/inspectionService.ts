@@ -422,6 +422,7 @@ export class InspectionService {
           status: 'Open',
           reportedAt: submittedAt,
           resolvedAt: null,
+          resolvedByUserId: null,
         },
       ]
     })

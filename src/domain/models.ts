@@ -112,6 +112,7 @@ export interface Defect {
   status: DefectStatus
   reportedAt: IsoDateTime
   resolvedAt: IsoDateTime | null
+  resolvedByUserId: EntityId | null
 }
 
 export interface DraftDefect {
