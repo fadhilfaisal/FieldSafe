@@ -69,9 +69,9 @@ describe('Manager empty dataset states', () => {
   it('shows explicit empty compliance states', async () => {
     render(<ManagerCompliancePage />)
 
-    expect(await screen.findByRole('heading', { name: 'No compliance history' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'No pass-rate history' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'No inspection volume' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'No equipment-type compliance' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'No equipment-type pass rate' })).toBeTruthy()
   })
 
   it('shows explicit empty defect states', async () => {

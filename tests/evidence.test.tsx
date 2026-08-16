@@ -47,7 +47,7 @@ describe('demo evidence references', () => {
     const user = userEvent.setup()
     render(<EvidenceAttachment value={null} onChange={onChange} />)
 
-    await user.click(screen.getByRole('button', { name: 'Add Demo Photo' }))
+    await user.click(screen.getByRole('button', { name: 'Add Photo' }))
 
     expect(onChange).toHaveBeenCalledWith(DEMO_EVIDENCE)
     expect(JSON.stringify(onChange.mock.calls[0][0])).not.toContain('data:image')
@@ -65,7 +65,7 @@ describe('demo evidence references', () => {
     )
 
     const preview = screen.getByRole('img', {
-      name: 'Simulated hydraulic hose defect evidence',
+      name: 'Attached defect evidence',
     })
     expect(preview.getAttribute('src')).toBe(DEMO_EVIDENCE_PUBLIC_URL)
 
@@ -78,7 +78,7 @@ describe('demo evidence references', () => {
     ).toBeTruthy()
     expect(screen.getByText('Preview unavailable')).toBeTruthy()
     expect(screen.getByText('Hydraulic hose damage')).toBeTruthy()
-    expect(screen.getByText('Demo evidence attached')).toBeTruthy()
+    expect(screen.getByText('Photo attached')).toBeTruthy()
   })
 })
 

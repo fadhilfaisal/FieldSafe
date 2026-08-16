@@ -4,6 +4,7 @@ import type {
   EquipmentStatus,
   IsoDateTime,
   DefectSeverity,
+  Inspection,
 } from './models'
 
 export type GateDecision = 'Allowed' | 'Restricted' | 'Denied'
@@ -13,6 +14,16 @@ export function isCorrectiveActionOverdue(
   asOf: IsoDateTime = new Date().toISOString(),
 ) {
   return action.status !== 'Done' && action.dueAt < asOf
+}
+
+export function isInspectionOverdue(
+  inspection: Inspection,
+  asOf: IsoDateTime = new Date().toISOString(),
+) {
+  return (
+    inspection.status !== 'Completed' &&
+    Date.parse(inspection.dueAt) < Date.parse(asOf)
+  )
 }
 
 export function deriveEquipmentStatus(defects: Defect[]): EquipmentStatus {

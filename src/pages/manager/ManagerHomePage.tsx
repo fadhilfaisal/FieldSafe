@@ -21,7 +21,7 @@ import {
 
 const managerDestinations = [
   {
-    title: 'Compliance',
+    title: 'Pass Rate',
     description: 'Inspection completion, pass rate, and equipment-type performance.',
     to: '/manager/compliance',
     icon: ClipboardCheck,
@@ -70,7 +70,7 @@ export function ManagerHomePage() {
       <PageHeader
         eyebrow="Management visibility"
         title="Manager Overview"
-        description="Read-only visibility into inspection compliance, defects, and current equipment safety state."
+        description="Read-only visibility into inspection pass rate, defects, and current equipment safety state."
       />
 
       {!overview && !error ? <LoadingState label="Loading management overview…" /> : null}
@@ -83,8 +83,8 @@ export function ManagerHomePage() {
       {overview ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Inspection Compliance" value={`${overview.complianceRate}%`} icon={ClipboardCheck} supportingText="Passed completed inspections" />
-            <MetricCard label="Recent Inspections" value={overview.recentInspectionCount} icon={Activity} supportingText="Completed in the last 30 days" />
+            <MetricCard label="Inspection Pass Rate" value={`${overview.complianceRate}%`} icon={ClipboardCheck} helpText="Passed inspections ÷ completed inspections" />
+            <MetricCard label="Inspections — Last 30 Days" value={overview.recentInspectionCount} icon={Activity} supportingText="Completed in the rolling 30-day period" />
             <MetricCard label="Open Defects" value={overview.openDefectCount} icon={ShieldAlert} supportingText="Open and under-review defects" />
             <MetricCard label="Out of Service" value={overview.equipmentStatusCounts['Out of Service']} icon={Truck} supportingText={`Across ${overview.totalEquipmentCount} equipment records`} />
           </div>

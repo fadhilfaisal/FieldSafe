@@ -117,12 +117,12 @@ export function GatePage() {
           <div className="text-center">
             <ScanLine aria-hidden="true" className="mx-auto size-20 text-navy-900" strokeWidth={1.4} />
             <p className="mt-3 text-lg font-bold text-slate-900">{selected?.equipment.assetCode}</p>
-            <p className="mt-1 text-xs text-slate-500">Demo scan target</p>
+            <p className="mt-1 text-xs text-slate-500">Selected simulation target</p>
           </div>
         </div>
 
         <label htmlFor="gate-equipment-selection" className="mt-6 block text-sm font-bold text-slate-800">
-          Demo equipment selection
+          Select equipment to simulate
         </label>
         <select
           id="gate-equipment-selection"

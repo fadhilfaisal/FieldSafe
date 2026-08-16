@@ -52,6 +52,7 @@ export interface SupervisorActionListItem {
 
 export interface SupervisorDashboard {
   pendingReviews: SupervisorReviewListItem[]
+  recentPassedInspections: SupervisorReviewListItem[]
   actions: SupervisorActionListItem[]
   openActionCount: number
   overdueActionCount: number
@@ -89,6 +90,8 @@ const reviewSeverityRank: Record<DefectSeverity, number> = {
   Critical: 3,
 }
 
+export const RECENT_PASSED_INSPECTION_LIMIT = 5
+
 export class SupervisorService {
   constructor(
     private readonly repository: FieldSafeRepository,
@@ -113,7 +116,9 @@ export class SupervisorService {
         (inspection) =>
           inspection.status === 'Completed' &&
           inspection.submittedAt !== null &&
-          (status === 'All' || inspection.reviewStatus === status),
+          (status === 'All' ||
+            (inspection.result === 'Fail' &&
+              inspection.reviewStatus === status)),
       )
       .map((inspection) => {
         const assignedEquipment = equipment.find(
@@ -133,17 +138,33 @@ export class SupervisorService {
         const inspectionDefects = defects.filter(
           (defect) => defect.inspectionId === inspection.id,
         )
+        const failedCount = responses.filter(
+          (response) =>
+            response.inspectionId === inspection.id &&
+            response.result === 'Fail',
+        ).length
+        const isCleanPass =
+          inspection.result === 'Pass' &&
+          failedCount === 0 &&
+          inspectionDefects.length === 0
+
         return {
-          inspection,
+          // Earlier prototype builds assigned every completed inspection a
+          // review status. Normalize legacy clean passes at the service
+          // boundary so persisted demo data remains usable without a reset.
+          inspection: isCleanPass
+            ? {
+                ...inspection,
+                reviewStatus: null,
+                reviewedAt: null,
+                reviewedByUserId: null,
+              }
+            : inspection,
           equipment: assignedEquipment,
           checklist,
           inspector,
           defects: inspectionDefects,
-          failedCount: responses.filter(
-            (response) =>
-              response.inspectionId === inspection.id &&
-              response.result === 'Fail',
-          ).length,
+          failedCount,
           highestSeverity: getHighestDefectSeverity(
             inspectionDefects.map((defect) => defect.severity),
           ),
@@ -220,6 +241,11 @@ export class SupervisorService {
     const inspection = await this.repository.getInspectionById(inspectionId)
     if (!inspection || inspection.status !== 'Completed') {
       throw new SupervisorWorkflowError('Inspection review not found.')
+    }
+    if (inspection.result !== 'Fail') {
+      throw new SupervisorWorkflowError(
+        'Passed inspections do not require Supervisor review.',
+      )
     }
     const supervisor = (await this.repository.getUsers()).find(
       (user) =>
@@ -468,15 +494,37 @@ export class SupervisorService {
   }
 
   async getDashboard(): Promise<SupervisorDashboard> {
-    const [pendingReviews, actions, defects, equipment] = await Promise.all([
-      this.getReviews('Pending Review'),
+    const [completedInspections, actions, defects, equipment] = await Promise.all([
+      this.getReviews('All'),
       this.getActions(),
       this.repository.getDefects(),
       this.repository.getEquipment(),
     ])
 
+    const pendingReviews = completedInspections.filter(
+      (item) =>
+        item.inspection.result === 'Fail' &&
+        item.inspection.reviewStatus === 'Pending Review',
+    )
+    const recentPassedInspections = completedInspections
+      .filter(
+        (item) =>
+          item.inspection.result === 'Pass' &&
+          item.failedCount === 0 &&
+          item.defects.length === 0 &&
+          item.inspection.reviewStatus !== 'Pending Review',
+      )
+      .slice()
+      .sort((left, right) =>
+        (right.inspection.submittedAt ?? '').localeCompare(
+          left.inspection.submittedAt ?? '',
+        ),
+      )
+      .slice(0, RECENT_PASSED_INSPECTION_LIMIT)
+
     return {
       pendingReviews,
+      recentPassedInspections,
       actions,
       openActionCount: actions.filter(
         (item) => item.action.status !== 'Done',

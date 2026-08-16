@@ -14,6 +14,7 @@ import type {
 import {
   deriveEquipmentStatus,
   deriveEquipmentStatusFromSeverities,
+  isInspectionOverdue,
 } from '../domain/safety'
 import { fieldSafeRepository } from '../repositories'
 import type { FieldSafeRepository } from '../repositories/fieldSafeRepository'
@@ -33,6 +34,7 @@ export interface InspectorQueueItem {
   equipment: Equipment
   checklist: Checklist
   draft: InspectionDraft | null
+  overdue: boolean
 }
 
 export interface ChecklistValidation {
@@ -60,6 +62,12 @@ export class InspectionValidationError extends InspectionWorkflowError {
     super('Complete every checklist item and provide a signature before submitting.')
     this.name = 'InspectionValidationError'
   }
+}
+
+export const MIN_DEFECT_DESCRIPTION_LENGTH = 5
+
+export function isMeaningfulDefectDescription(value: string) {
+  return value.trim().length >= MIN_DEFECT_DESCRIPTION_LENGTH
 }
 
 function createEmptyDraft(inspectionId: string, now: string): InspectionDraft {
@@ -95,6 +103,8 @@ export function validateInspectionDraft(
     } else if (response.result === 'Fail') {
       if (!response.defect?.description.trim()) {
         errors.push('Describe the defect.')
+      } else if (!isMeaningfulDefectDescription(response.defect.description)) {
+        errors.push('Describe what is damaged and where it was observed.')
       }
       if (!response.defect?.severity) {
         errors.push('Select a severity.')
@@ -142,6 +152,7 @@ export class InspectionService {
       this.repository.getChecklists(),
     ])
 
+    const asOf = this.now()
     const queue = inspections
       .filter(
         (inspection) =>
@@ -160,9 +171,17 @@ export class InspectionService {
             `Inspection ${inspection.id} has incomplete equipment or checklist data.`,
           )
         }
-        return { inspection, equipment: assignedEquipment, checklist }
+        return {
+          inspection,
+          equipment: assignedEquipment,
+          checklist,
+          overdue: isInspectionOverdue(inspection, asOf),
+        }
       })
-      .sort((a, b) => a.inspection.dueAt.localeCompare(b.inspection.dueAt))
+      .sort((a, b) => {
+        if (a.overdue !== b.overdue) return a.overdue ? -1 : 1
+        return a.inspection.dueAt.localeCompare(b.inspection.dueAt)
+      })
 
     return Promise.all(
       queue.map(async (item) => ({
@@ -326,6 +345,9 @@ export class InspectionService {
       severity: response.defect?.severity ?? null,
       evidenceReference: response.defect?.evidenceReference ?? null,
       ...patch,
+      ...(patch.description !== undefined
+        ? { description: patch.description.trim() }
+        : {}),
     }
     draft.updatedAt = this.now()
     return this.repository.saveInspectionDraft(draft)
@@ -442,7 +464,7 @@ export class InspectionService {
       submittedAt,
       signature: workspace.draft.signature,
       syncStatus: connectivity === 'OFFLINE' ? 'PENDING_SYNC' : 'SYNCED',
-      reviewStatus: 'Pending Review',
+      reviewStatus: defects.length > 0 ? 'Pending Review' : null,
       reviewedAt: null,
       reviewedByUserId: null,
     }

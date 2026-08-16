@@ -13,6 +13,7 @@ import { MetricCard } from '../../components/common/MetricCard'
 import { PageHeader } from '../../components/common/PageHeader'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { CorrectiveActionCard } from '../../components/supervisor/CorrectiveActionCard'
+import { CompletedInspectionCard } from '../../components/supervisor/CompletedInspectionCard'
 import { ReviewCard } from '../../components/supervisor/ReviewCard'
 import {
   supervisorService,
@@ -61,11 +62,12 @@ export function SupervisorHomePage() {
 
       {dashboard ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Pending Reviews" value={dashboard.pendingReviews.length} icon={ClipboardCheck} supportingText="Submitted inspections awaiting acknowledgement" />
-            <MetricCard label="Open Actions" value={dashboard.openActionCount} icon={Wrench} supportingText="Open and in-progress corrective work" />
-            <MetricCard label="Overdue Actions" value={dashboard.overdueActionCount} icon={TimerReset} supportingText="Unfinished actions past their due date" />
-            <MetricCard label="Critical / OOS" value={`${dashboard.criticalDefectCount} / ${dashboard.outOfServiceCount}`} icon={ShieldAlert} supportingText="Unresolved critical defects / out-of-service assets" />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <MetricCard label="Pending Reviews" value={dashboard.pendingReviews.length} icon={ClipboardCheck} helpText="Submitted failed inspections awaiting Supervisor acknowledgement." reserveLabelSpace />
+            <MetricCard label="Open Actions" value={dashboard.openActionCount} icon={Wrench} helpText="Corrective actions currently Open or In Progress." reserveLabelSpace />
+            <MetricCard label="Overdue Actions" value={dashboard.overdueActionCount} icon={TimerReset} helpText="Unfinished corrective actions past their due date." reserveLabelSpace />
+            <MetricCard label="Critical Defects" value={dashboard.criticalDefectCount} icon={ShieldAlert} helpText="Unresolved defects with Critical severity." reserveLabelSpace />
+            <MetricCard label="Out-of-Service Equipment" value={dashboard.outOfServiceCount} icon={ShieldAlert} helpText="Equipment currently Out of Service due to unresolved safety risk." reserveLabelSpace />
           </div>
 
           <section aria-labelledby="dashboard-reviews-title" className="space-y-3">
@@ -100,6 +102,23 @@ export function SupervisorHomePage() {
               </div>
             ) : (
               <Card><EmptyState icon={Wrench} title="No open corrective actions" description="There is no corrective work requiring attention." /></Card>
+            )}
+          </section>
+
+          <section aria-labelledby="dashboard-passed-title" className="space-y-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-700">Operational record</p>
+              <h2 id="dashboard-passed-title" className="mt-1 text-xl font-bold text-slate-950">Recent Passed Inspections</h2>
+              <p className="mt-1 text-sm text-slate-500">Latest completed inspections with no failed checklist responses.</p>
+            </div>
+            {dashboard.recentPassedInspections.length > 0 ? (
+              <div className="space-y-3">
+                {dashboard.recentPassedInspections.map((item) => (
+                  <CompletedInspectionCard key={item.inspection.id} item={item} />
+                ))}
+              </div>
+            ) : (
+              <Card><EmptyState icon={ClipboardCheck} title="No passed inspections" description="Completed all-pass Inspector submissions will appear here." /></Card>
             )}
           </section>
         </>

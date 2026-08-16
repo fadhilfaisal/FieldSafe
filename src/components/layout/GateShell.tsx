@@ -1,5 +1,4 @@
-import { Outlet } from 'react-router'
-import { ConnectivityIndicator } from '../common/ConnectivityIndicator'
+import { Link, Outlet } from 'react-router'
 import { BrandMark } from './BrandMark'
 
 export function GateShell() {
@@ -14,7 +13,9 @@ export function GateShell() {
               Gate
             </span>
           </div>
-          <ConnectivityIndicator inverted />
+          <Link to="/login" className="inline-flex min-h-10 items-center rounded-lg px-3 text-xs font-semibold text-blue-100 hover:bg-white/10 hover:text-white">
+            Return to Login
+          </Link>
         </header>
         <main className="subtle-grid flex flex-1 items-center justify-center bg-slate-25 p-5 sm:p-8 lg:p-12">
           <div className="w-full max-w-3xl">

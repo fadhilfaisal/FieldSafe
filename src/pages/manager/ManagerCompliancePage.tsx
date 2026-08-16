@@ -23,7 +23,7 @@ export function ManagerCompliancePage() {
         if (active) setAnalytics(nextAnalytics)
       })
       .catch((loadError) => {
-        if (active) setError(loadError instanceof Error ? loadError.message : 'Unable to load compliance data.')
+        if (active) setError(loadError instanceof Error ? loadError.message : 'Unable to load pass-rate data.')
       })
     return () => {
       active = false
@@ -37,24 +37,24 @@ export function ManagerCompliancePage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader eyebrow="Management visibility" title="Compliance" description="Inspection pass performance across the persisted FieldSafe operating history." />
-      {!analytics && !error ? <LoadingState label="Loading compliance visibility…" /> : null}
-      {error ? <Card><EmptyState icon={ClipboardCheck} title="Unable to load compliance" description={error} /></Card> : null}
+      <PageHeader eyebrow="Management visibility" title="Compliance" description="Inspection performance and compliance visibility across the fleet." />
+      {!analytics && !error ? <LoadingState label="Loading pass-rate visibility…" /> : null}
+      {error ? <Card><EmptyState icon={ClipboardCheck} title="Unable to load pass rate" description={error} /></Card> : null}
       {analytics ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Overall Compliance" value={`${analytics.complianceRate}%`} icon={ClipboardCheck} supportingText="Passed completed inspections" />
-            <MetricCard label="Completed Inspections" value={analytics.inspectionCount} icon={ChartNoAxesCombined} supportingText="Across the available historical period" />
-            <MetricCard label="Passed" value={analytics.passedCount} icon={CheckCircle2} supportingText="Inspections completed without a failed response" />
-            <MetricCard label="Failed" value={analytics.failedCount} icon={XCircle} supportingText="Inspections containing one or more failures" />
+            <MetricCard label="Inspection Pass Rate" value={`${analytics.complianceRate}%`} icon={ClipboardCheck} helpText="Passed inspections ÷ completed inspections" />
+            <MetricCard label="Completed Inspections" value={analytics.inspectionCount} icon={ChartNoAxesCombined} />
+            <MetricCard label="Passed" value={analytics.passedCount} icon={CheckCircle2} />
+            <MetricCard label="Failed" value={analytics.failedCount} icon={XCircle} />
           </div>
 
           <div className="grid gap-5 xl:grid-cols-2">
             <Card className="p-5 sm:p-6">
-              <h2 className="text-xl font-bold text-slate-950">Compliance Trend</h2>
+              <h2 className="text-xl font-bold text-slate-950">Pass Rate Trend</h2>
               <p className="mt-1 text-sm text-slate-500">Monthly performance across the seeded historical period.</p>
               {analytics.trend.length === 0 ? (
-                <EmptyState icon={ClipboardCheck} title="No compliance history" description="No completed inspections are available for compliance calculation." />
+                <EmptyState icon={ClipboardCheck} title="No pass-rate history" description="No completed inspections are available for pass-rate calculation." />
               ) : (
                 <div className="mt-6 space-y-5">
                   {analytics.trend.map((period) => (
@@ -72,7 +72,7 @@ export function ManagerCompliancePage() {
               ) : (
                 <div className="mt-6 space-y-5">
                   {analytics.trend.map((period) => (
-                    <AnalyticsBar key={period.key} label={period.label} value={period.inspectionCount} maximum={maximumPeriodVolume} tone="brand" supportingText={`${period.complianceRate}% compliant`} />
+                    <AnalyticsBar key={period.key} label={period.label} value={period.inspectionCount} maximum={maximumPeriodVolume} tone="brand" supportingText={`${period.complianceRate}% pass rate`} />
                   ))}
                 </div>
               )}
@@ -81,11 +81,11 @@ export function ManagerCompliancePage() {
 
           <Card className="overflow-hidden">
             <div className="border-b border-slate-200 p-5 sm:p-6">
-              <h2 className="text-xl font-bold text-slate-950">Compliance by Equipment Type</h2>
+              <h2 className="text-xl font-bold text-slate-950">Pass Rate by Equipment Type</h2>
               <p className="mt-1 text-sm text-slate-500">Performance calculated from completed inspections associated with each fleet type.</p>
             </div>
             {analytics.inspectionCount === 0 ? (
-              <EmptyState icon={ClipboardCheck} title="No equipment-type compliance" description="No completed inspection data is available for an equipment-type breakdown." />
+              <EmptyState icon={ClipboardCheck} title="No equipment-type pass rate" description="No completed inspection data is available for an equipment-type breakdown." />
             ) : (
               <div className="grid gap-6 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
                 {analytics.byEquipmentType.map((item) => (

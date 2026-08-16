@@ -74,7 +74,7 @@ describe('public Gate experience', () => {
     expect(router.state.location.pathname).toBe('/gate')
     expect(screen.queryByRole('heading', { name: 'Sign in to FieldSafe' })).toBeNull()
 
-    await user.selectOptions(screen.getByLabelText('Demo equipment selection'), 'EQ-001')
+    await user.selectOptions(screen.getByLabelText('Select equipment to simulate'), 'EQ-001')
     await user.click(screen.getByRole('button', { name: 'Simulate Scan' }))
 
     expect(await screen.findByRole('heading', { name: 'DENIED' })).toBeTruthy()

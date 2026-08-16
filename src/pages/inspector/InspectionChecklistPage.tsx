@@ -82,7 +82,7 @@ export function InspectionChecklistPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-5 pb-4" data-testid="checklist-safe-area">
       <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -102,7 +102,7 @@ export function InspectionChecklistPage() {
           <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
           <div>
             <p className="font-bold">Checklist incomplete</p>
-            <p className="mt-1 leading-5">Answer every item. Failed items also require a description, severity, and demo photo.</p>
+            <p className="mt-1 leading-5">Answer every item. Failed items also require a meaningful description, severity, and photo evidence.</p>
           </div>
         </div>
       ) : null}
@@ -111,7 +111,7 @@ export function InspectionChecklistPage() {
         <p className="rounded-lg bg-danger-50 p-3 text-sm font-semibold text-danger-700" role="alert">{mutationError}</p>
       ) : null}
 
-      <div className="space-y-4">
+      <div className="space-y-4" data-testid="checklist-items">
         {workspace.items.map((item) => {
           const response = workspace.draft?.responses.find(
             (candidate) => candidate.checklistItemId === item.id,
@@ -129,7 +129,7 @@ export function InspectionChecklistPage() {
         })}
       </div>
 
-      <div className="sticky bottom-20 z-10 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-card" data-testid="checklist-review-cta">
         <Button size="lg" className="w-full" onClick={review}>
           Review Inspection
           <ArrowRight aria-hidden="true" className="size-5" />

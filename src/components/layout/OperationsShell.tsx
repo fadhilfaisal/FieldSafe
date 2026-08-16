@@ -7,7 +7,6 @@ import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { getInitials } from '../../utils/identity'
 import { cn } from '../../utils/cn'
-import { ConnectivityIndicator } from '../common/ConnectivityIndicator'
 import { BrandMark } from './BrandMark'
 
 export interface OperationsNavItem {
@@ -81,7 +80,6 @@ export function OperationsShell({ role, navigation }: OperationsShellProps) {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-3">
-              <ConnectivityIndicator />
               <div className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-left">
                 <span className="flex size-9 items-center justify-center rounded-full bg-brand-50 text-brand-700">
                   {user ? (

@@ -40,7 +40,7 @@ function FieldShellContent() {
 
   return (
     <div className="min-h-dvh bg-slate-100 sm:p-4 lg:p-6">
-      <div className="shell-surface mx-auto flex min-h-dvh max-w-5xl flex-col overflow-hidden sm:min-h-[calc(100dvh-2rem)] sm:rounded-2xl lg:min-h-[calc(100dvh-3rem)]">
+      <div className="shell-surface mx-auto flex h-dvh max-w-5xl flex-col overflow-hidden sm:h-[calc(100dvh-2rem)] sm:rounded-2xl lg:h-[calc(100dvh-3rem)]">
         <header className="flex min-h-16 items-center justify-between gap-3 border-b border-navy-800 bg-navy-900 px-4 text-white sm:px-6">
           <BrandMark inverted />
           <div className="flex items-center gap-2">
@@ -69,14 +69,14 @@ function FieldShellContent() {
           </div>
         </header>
 
-        <main className="subtle-grid flex-1 overflow-y-auto bg-slate-25 px-4 py-6 pb-28 sm:px-6 sm:py-8 sm:pb-28 lg:px-10">
+        <main className="subtle-grid min-h-0 flex-1 overflow-y-auto bg-slate-25 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
           <ConnectivityNotice />
           <Outlet />
         </main>
 
         <nav
           aria-label="Inspector navigation"
-          className="fixed inset-x-0 bottom-0 z-20 mx-auto grid max-w-5xl grid-cols-4 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur sm:bottom-4 sm:rounded-b-2xl lg:bottom-6"
+          className="z-20 grid shrink-0 grid-cols-4 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur sm:rounded-b-2xl"
         >
           {navigation.map(({ label, to, icon: Icon, end }) => (
             <NavLink

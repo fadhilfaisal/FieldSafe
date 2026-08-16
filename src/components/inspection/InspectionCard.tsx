@@ -1,4 +1,4 @@
-import { CalendarClock, MapPin, Play, RotateCcw } from 'lucide-react'
+import { AlertTriangle, CalendarClock, MapPin, Play, RotateCcw } from 'lucide-react'
 import type { InspectorQueueItem } from '../../services/inspectionService'
 import { Button } from '../common/Button'
 import { Card } from '../common/Card'
@@ -36,6 +36,12 @@ export function InspectionCard({
             <span className="rounded-full bg-brand-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-700">
               {inProgress ? 'In progress' : 'Assigned'}
             </span>
+            {item.overdue ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-danger-100 bg-danger-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-danger-700">
+                <AlertTriangle aria-hidden="true" className="size-3" />
+                Overdue
+              </span>
+            ) : null}
           </div>
           <h2 className="mt-2 truncate text-base font-bold text-slate-900">
             {item.equipment.name}
@@ -48,7 +54,7 @@ export function InspectionCard({
               <MapPin aria-hidden="true" className="size-3.5" />
               {item.equipment.site}
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span className={item.overdue ? 'inline-flex items-center gap-1.5 font-bold text-danger-700' : 'inline-flex items-center gap-1.5'}>
               <CalendarClock aria-hidden="true" className="size-3.5" />
               Due {formatDueDate(item.inspection.dueAt)}
             </span>

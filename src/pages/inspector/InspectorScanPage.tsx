@@ -16,6 +16,7 @@ export function InspectorScanPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const requestedInspection = searchParams.get('inspection')
+  const assignmentOriginated = Boolean(requestedInspection)
   const [queue, setQueue] = useState<InspectorQueueItem[]>([])
   const [selectedId, setSelectedId] = useState(requestedInspection ?? '')
   const [loading, setLoading] = useState(true)
@@ -37,6 +38,7 @@ export function InspectorScanPage() {
   }, [user])
 
   const selected = queue.find((item) => item.inspection.id === selectedId)
+  const requestedAssignmentAvailable = !requestedInspection || Boolean(selected)
 
   function simulateScan() {
     if (!selected) return
@@ -61,6 +63,19 @@ export function InspectorScanPage() {
     )
   }
 
+  if (!requestedAssignmentAvailable) {
+    return (
+      <Card>
+        <EmptyState
+          icon={QrCode}
+          title="Assigned inspection unavailable"
+          description="This inspection is no longer actionable or is not assigned to the active Inspector. Return Home to choose current work."
+          action={<Button onClick={() => navigate('/inspector')}>Return Home</Button>}
+        />
+      </Card>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
       <div className="text-center">
@@ -80,24 +95,32 @@ export function InspectorScanPage() {
           <div className="text-center">
             <ScanLine aria-hidden="true" className="mx-auto size-20 text-navy-900" strokeWidth={1.4} />
             <p className="mt-3 text-sm font-bold text-slate-900">{selected?.equipment.assetCode}</p>
-            <p className="mt-1 text-xs text-slate-500">Demo scan target</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {assignmentOriginated ? 'Expected assigned equipment' : 'Selected simulation target'}
+            </p>
           </div>
         </div>
 
-        <label className="mt-6 block text-sm font-bold text-slate-800">
-          Demo equipment fallback
-          <select
-            value={selectedId}
-            onChange={(event) => setSelectedId(event.target.value)}
-            className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none"
-          >
-            {queue.map((item) => (
-              <option key={item.inspection.id} value={item.inspection.id}>
-                {item.equipment.assetCode} — {item.equipment.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {assignmentOriginated ? (
+          <div className="mt-6 rounded-lg border border-brand-100 bg-brand-50 p-3 text-sm text-brand-800">
+            Simulate scanning to verify the equipment assigned to this inspection.
+          </div>
+        ) : (
+          <label className="mt-6 block text-sm font-bold text-slate-800">
+            Select equipment to simulate
+            <select
+              value={selectedId}
+              onChange={(event) => setSelectedId(event.target.value)}
+              className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none"
+            >
+              {queue.map((item) => (
+                <option key={item.inspection.id} value={item.inspection.id}>
+                  {item.equipment.assetCode} — {item.equipment.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <Button size="lg" className="mt-5 w-full" onClick={simulateScan} disabled={scanning || !selected}>
           <QrCode aria-hidden="true" className="size-5" />

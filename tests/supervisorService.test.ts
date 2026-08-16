@@ -16,6 +16,7 @@ import { InspectionService } from '../src/services/inspectionService'
 import { GateService } from '../src/services/gateService'
 import { ManagerService } from '../src/services/managerService'
 import {
+  RECENT_PASSED_INSPECTION_LIMIT,
   SupervisorReviewConfirmationRequired,
   SupervisorService,
 } from '../src/services/supervisorService'
@@ -185,6 +186,90 @@ describe('Supervisor review and corrective action service', () => {
     expect(detail.responses.find((item) => item.defect)?.defect?.evidenceReference).toEqual(
       DEMO_EVIDENCE,
     )
+    expect(
+      (await supervisor.getDashboard()).recentPassedInspections.some(
+        (item) => item.inspection.id === submission.inspection.id,
+      ),
+    ).toBe(false)
+  })
+
+  it('keeps an all-pass submission out of reviews and visible in capped recent passes after reconstruction', async () => {
+    const flow = createServices()
+    const pendingBefore = (await flow.supervisor.getDashboard()).pendingReviews.length
+    const submission = await submitInspectionWithDefects(
+      flow.inspector,
+      [],
+      'ASG-001',
+    )
+
+    expect(submission.inspection).toMatchObject({
+      status: 'Completed',
+      result: 'Pass',
+      reviewStatus: null,
+    })
+    expect(submission.defects).toHaveLength(0)
+    expect(await flow.repository.getDefects(submission.inspection.id)).toHaveLength(0)
+    expect(submission.equipment.status).toBe('Fit')
+    const dashboard = await flow.supervisor.getDashboard()
+    expect(dashboard.pendingReviews).toHaveLength(pendingBefore)
+    expect(
+      dashboard.pendingReviews.some(
+        (item) => item.inspection.id === submission.inspection.id,
+      ),
+    ).toBe(false)
+    expect(
+      dashboard.recentPassedInspections.find(
+        (item) => item.inspection.id === submission.inspection.id,
+      )?.inspection.result,
+    ).toBe('Pass')
+    expect(dashboard.recentPassedInspections).toHaveLength(
+      RECENT_PASSED_INSPECTION_LIMIT,
+    )
+    expect(
+      dashboard.recentPassedInspections.every(
+        (item) =>
+          item.inspection.result === 'Pass' &&
+          item.failedCount === 0 &&
+          item.defects.length === 0 &&
+          item.inspection.reviewStatus !== 'Pending Review',
+      ),
+    ).toBe(true)
+    expect(
+      dashboard.recentPassedInspections.map(
+        (item) => item.inspection.submittedAt,
+      ),
+    ).toEqual(
+      dashboard.recentPassedInspections
+        .map((item) => item.inspection.submittedAt)
+        .slice()
+        .sort((left, right) => (right ?? '').localeCompare(left ?? '')),
+    )
+    await expect(
+      flow.supervisor.markReviewReviewed(
+        submission.inspection.id,
+        'USR-SUP-001',
+      ),
+    ).rejects.toThrow('Passed inspections do not require Supervisor review.')
+    expect(
+      (await flow.manager.getEquipmentDetail(submission.equipment.id)).status,
+    ).toBe('Fit')
+    expect(
+      (await flow.gate.checkEquipment(submission.equipment.id)).decision,
+    ).toBe('Allowed')
+
+    const reconstructed = createServices(flow.storage)
+    expect(
+      (
+        await reconstructed.supervisor.getDashboard()
+      ).recentPassedInspections.some(
+        (item) => item.inspection.id === submission.inspection.id,
+      ),
+    ).toBe(true)
+    expect(
+      await reconstructed.repository.getInspectionById(
+        submission.inspection.id,
+      ),
+    ).toMatchObject({ status: 'Completed', result: 'Pass' })
   })
 
   it('marks a review as reviewed and reconstructs the persisted lifecycle', async () => {

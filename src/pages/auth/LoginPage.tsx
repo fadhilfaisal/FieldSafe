@@ -1,6 +1,6 @@
 import { AlertCircle, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../auth/demoCredentials'
 import { getRoleLandingPath } from '../../auth/authorization'
 import { useAuth } from '../../auth/useAuth'
@@ -167,6 +167,9 @@ export function LoginPage() {
               ))}
             </div>
           </section>
+          <Link to="/gate" className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 self-center rounded-lg px-3 text-sm font-bold text-brand-700 hover:bg-brand-50 hover:text-brand-600">
+            Open Gate Check <ArrowRight aria-hidden="true" className="size-4" />
+          </Link>
         </div>
       </section>
     </main>

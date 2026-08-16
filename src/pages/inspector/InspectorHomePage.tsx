@@ -43,7 +43,6 @@ export function InspectorHomePage() {
     setOpeningId(item.inspection.id)
     try {
       if (item.inspection.status === 'Assigned') {
-        await inspectionService.startInspection(item.inspection.id, user.id)
         navigate(`/inspector/scan?inspection=${item.inspection.id}`)
       } else {
         navigate(`/inspector/inspection/${item.inspection.id}`)

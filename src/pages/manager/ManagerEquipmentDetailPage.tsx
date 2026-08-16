@@ -59,7 +59,7 @@ export function ManagerEquipmentDetailPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="p-5"><p className="text-sm font-medium text-slate-600">Current State</p><div className="mt-3"><StatusBadge status={detail.status} /></div></Card>
         <Card className="p-5"><p className="text-sm font-medium text-slate-600">Unresolved Defects</p><p className="mt-2 text-3xl font-bold text-slate-950">{detail.unresolvedDefects.length}</p></Card>
-        <Card className="p-5"><p className="text-sm font-medium text-slate-600">Active Actions</p><p className="mt-2 text-3xl font-bold text-slate-950">{detail.activeCorrectiveActionCount}</p></Card>
+        <Card className="p-5"><p className="text-sm font-medium text-slate-600">Active Corrective Actions</p><p className="mt-2 text-3xl font-bold text-slate-950">{detail.activeCorrectiveActionCount}</p><p className="mt-1 text-xs text-slate-500">Open and in-progress only</p></Card>
         <Card className="p-5"><p className="text-sm font-medium text-slate-600">Last Inspection</p><p className="mt-2 text-sm font-bold text-slate-950">{formatDateTime(detail.latestInspection?.submittedAt ?? detail.latestInspection?.completedAt ?? null)}</p></Card>
       </div>
 
@@ -86,6 +86,9 @@ export function ManagerEquipmentDetailPage() {
         ) : (
           <Card><EmptyState icon={ShieldCheck} title="No unresolved defects" description="This equipment has no open or under-review defect records." /></Card>
         )}
+        {detail.status === 'Fit' && detail.unresolvedDefects.some((defect) => defect.severity === 'Minor') ? (
+          <p className="text-xs font-semibold text-brand-700">Fit indicates no unresolved Major or Critical defects; Minor defects may remain open.</p>
+        ) : null}
       </section>
 
       <Card className="overflow-hidden">

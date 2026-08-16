@@ -47,8 +47,9 @@ export function EquipmentConfirmationPage() {
         <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-success-50 text-success-700">
           <ShieldCheck aria-hidden="true" className="size-7" />
         </span>
-        <p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-success-700">Equipment resolved</p>
+        <p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-success-700">Assigned equipment matched</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Confirm Equipment</h1>
+        <p className="mt-2 text-sm text-slate-600">The simulated scan verified the equipment assigned to this inspection.</p>
       </div>
 
       <Card className="overflow-hidden">

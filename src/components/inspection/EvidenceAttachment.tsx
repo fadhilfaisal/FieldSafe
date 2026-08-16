@@ -19,12 +19,12 @@ export function EvidenceAttachment({
         <div className="flex items-center gap-3 p-3">
           <EvidencePreview
             evidence={value}
-            alt="Simulated hydraulic hose defect evidence"
+            alt="Attached defect evidence"
             className="size-16 rounded-md object-cover"
           />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold text-slate-900">{value.label}</p>
-            <p className="mt-1 text-xs text-success-700">Demo evidence attached</p>
+            <p className="mt-1 text-xs text-success-700">Photo attached</p>
           </div>
           <button
             type="button"
@@ -41,7 +41,7 @@ export function EvidenceAttachment({
           className="flex min-h-10 w-full items-center justify-center gap-2 border-t border-slate-200 text-xs font-bold text-brand-700 hover:bg-brand-50"
         >
           <RefreshCw aria-hidden="true" className="size-3.5" />
-          Replace with demo photo
+          Replace photo
         </button>
       </div>
     )
@@ -54,7 +54,7 @@ export function EvidenceAttachment({
       className="w-full sm:w-auto"
     >
       <Camera aria-hidden="true" className="size-4" />
-      Add Demo Photo
+      Add Photo
     </Button>
   )
 }

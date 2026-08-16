@@ -132,24 +132,32 @@ export function SupervisorReviewDetailPage() {
 
   const passed = review.responses.filter((item) => item.response.result === 'Pass')
   const failed = review.responses.filter((item) => item.response.result === 'Fail')
+  const cleanPass =
+    review.inspection.result === 'Pass' &&
+    failed.length === 0 &&
+    review.defects.length === 0
   const signed = Boolean(
     review.inspection.signature?.strokes.some((stroke) => stroke.length >= 2),
   )
 
   return (
     <div className="space-y-6">
-      <Link to="/supervisor/reviews" className="inline-flex min-h-10 items-center gap-2 text-sm font-bold text-brand-700 hover:text-brand-600">
+      <Link to={cleanPass ? '/supervisor' : '/supervisor/reviews'} className="inline-flex min-h-10 items-center gap-2 text-sm font-bold text-brand-700 hover:text-brand-600">
         <ArrowLeft aria-hidden="true" className="size-4" />
-        Back to reviews
+        {cleanPass ? 'Back to Supervisor Overview' : 'Back to reviews'}
       </Link>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <PageHeader
           eyebrow={`${review.equipment.assetCode} · ${review.equipment.type}`}
-          title="Inspection Review"
+          title={cleanPass ? 'Completed Inspection' : 'Inspection Review'}
           description={`${review.equipment.name} · ${review.equipment.site}`}
         />
         <div className="flex flex-wrap items-center gap-2">
-          <ReviewStatusBadge status={review.inspection.reviewStatus ?? 'Pending Review'} />
+          {cleanPass ? (
+            <StatusBadge status="Completed" />
+          ) : (
+            <ReviewStatusBadge status={review.inspection.reviewStatus ?? 'Pending Review'} />
+          )}
           {review.inspection.result ? (
             <StatusBadge status={review.inspection.result} />
           ) : (
@@ -177,14 +185,18 @@ export function SupervisorReviewDetailPage() {
           <div><p className="text-xs font-semibold text-slate-500">Submitted</p><p className="mt-1 text-sm font-bold text-slate-900">{formatDateTime(review.inspection.submittedAt)}</p></div>
           <div><p className="text-xs font-semibold text-slate-500">Signature</p><p className="mt-1 inline-flex items-center gap-2 text-sm font-bold text-slate-900"><PenLine aria-hidden="true" className="size-4 text-brand-700" />{signed ? 'Inspector signed' : 'Legacy record — not captured'}</p></div>
         </div>
-        {review.inspection.reviewStatus === 'Pending Review' ? (
+        {cleanPass ? (
+          <p className="mt-5 text-xs font-semibold text-success-700">
+            Completed with all checklist responses passing. No Supervisor acknowledgement is required.
+          </p>
+        ) : review.inspection.reviewStatus === 'Pending Review' ? (
           <Button className="mt-5" onClick={requestMarkReviewed} disabled={marking}>
             <CheckCircle2 aria-hidden="true" className="size-4" />
             {marking ? 'Marking reviewed…' : 'Mark Review as Reviewed'}
           </Button>
-        ) : (
+        ) : review.inspection.reviewStatus === 'Reviewed' ? (
           <p className="mt-5 text-xs font-semibold text-success-700">Reviewed {formatDateTime(review.inspection.reviewedAt)}</p>
-        )}
+        ) : null}
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -208,7 +220,7 @@ export function SupervisorReviewDetailPage() {
         </div>
       </Card>
 
-      <section aria-labelledby="review-defects-title" className="space-y-4">
+      {!cleanPass ? <section aria-labelledby="review-defects-title" className="space-y-4">
         <h2 id="review-defects-title" className="text-xl font-bold text-slate-950">Defect Assessment</h2>
         {failed.length === 0 ? (
           <Card><EmptyState icon={CheckCircle2} title="No defects recorded" description="Every checklist item passed during this inspection." /></Card>
@@ -276,9 +288,9 @@ export function SupervisorReviewDetailPage() {
             </Card>
           )
         })}
-      </section>
+      </section> : null}
 
-      <ConfirmationDialog
+      {!cleanPass ? <ConfirmationDialog
         open={confirmingReview}
         title="Mark inspection as reviewed?"
         description={`${confirmationCount} unresolved defect${confirmationCount === 1 ? '' : 's'} ${confirmationCount === 1 ? 'has' : 'have'} no corrective action assigned. Mark this inspection as reviewed anyway?`}
@@ -287,7 +299,7 @@ export function SupervisorReviewDetailPage() {
         busy={marking}
         onCancel={() => setConfirmingReview(false)}
         onConfirm={() => void markReviewed(true)}
-      />
+      /> : null}
     </div>
   )
 }

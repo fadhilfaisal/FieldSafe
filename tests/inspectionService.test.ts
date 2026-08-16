@@ -132,6 +132,51 @@ describe('Inspector workflow service', () => {
     ])
   })
 
+  it('rejects too-short defect descriptions and accepts useful trimmed descriptions', async () => {
+    const { service } = createFlow()
+    const workspace = await service.getWorkspace('ASG-001', 'USR-INSP-001')
+    const item = workspace.items[0]
+    await service.recordResponse('ASG-001', 'USR-INSP-001', item.id, 'Fail')
+    const shortDraft = await service.updateDraftDefect(
+      'ASG-001',
+      'USR-INSP-001',
+      item.id,
+      {
+        description: '  a  ',
+        severity: 'Major',
+        evidenceReference: structuredClone(DEMO_EVIDENCE),
+      },
+    )
+
+    expect(validateInspectionDraft(workspace.items, shortDraft).itemErrors[item.id]).toContain(
+      'Describe what is damaged and where it was observed.',
+    )
+
+    const validDraft = await service.updateDraftDefect(
+      'ASG-001',
+      'USR-INSP-001',
+      item.id,
+      { description: '  Hose split near coupling  ' },
+    )
+    expect(validDraft.responses[0].defect?.description).toBe(
+      'Hose split near coupling',
+    )
+    expect(validateInspectionDraft(workspace.items, validDraft).itemErrors[item.id]).toBeUndefined()
+  })
+
+  it('derives overdue assignments from the service clock and ranks them first', async () => {
+    const { repository } = createFlow()
+    const service = new InspectionService(
+      repository,
+      () => '2026-08-20T12:00:00.000Z',
+    )
+    const queue = await service.getInspectorQueue('USR-INSP-001')
+
+    expect(queue.some((item) => item.overdue)).toBe(true)
+    expect(queue[0].overdue).toBe(true)
+    expect(queue.every((item) => item.inspection.status !== 'Completed')).toBe(true)
+  })
+
   it('persists attached demo evidence as a lightweight reference across reconstruction', async () => {
     const flow = createFlow()
     const item = (await flow.service.getWorkspace('ASG-001', 'USR-INSP-001'))
@@ -207,6 +252,7 @@ describe('Inspector workflow service', () => {
     expect(result.defects).toHaveLength(0)
     expect(await repository.getChecklistResponses('ASG-001')).toHaveLength(10)
     expect(await repository.getDefects('ASG-001')).toHaveLength(0)
+    expect((await service.getInspectorQueue('USR-INSP-001')).map((item) => item.inspection.id)).not.toContain('ASG-001')
   })
 
   it('rejects repeated submission without duplicating persisted records', async () => {

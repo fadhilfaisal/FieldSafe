@@ -1,3 +1,4 @@
+import { AlertCircle, AlertTriangle, CircleAlert } from 'lucide-react'
 import type { DraftDefect, DefectSeverity } from '../../domain/models'
 import { cn } from '../../utils/cn'
 import { EvidenceAttachment } from './EvidenceAttachment'
@@ -16,6 +17,18 @@ const severityStyles: Record<DefectSeverity, string> = {
   Critical: 'border-danger-600 bg-danger-50 text-danger-700',
 }
 
+const severityGuidance: Record<DefectSeverity, string> = {
+  Minor: 'Equipment may remain Fit depending on other unresolved defects.',
+  Major: 'Equipment will be Restricted while this defect remains unresolved.',
+  Critical: 'Equipment will be Out of Service while this defect remains unresolved.',
+}
+
+const severityIcons = {
+  Minor: AlertCircle,
+  Major: AlertTriangle,
+  Critical: CircleAlert,
+}
+
 export function DefectFields({
   value,
   errors = [],
@@ -28,12 +41,13 @@ export function DefectFields({
           Defect description <span className="text-danger-700">*</span>
           <textarea
             defaultValue={value?.description ?? ''}
-            onBlur={(event) => onChange({ description: event.target.value })}
+            onBlur={(event) => onChange({ description: event.target.value.trim() })}
             rows={3}
             className="mt-2 w-full resize-y rounded-lg border border-slate-300 bg-white p-3 text-sm font-normal leading-6 text-slate-900 focus:border-brand-600 focus:outline-none"
-            placeholder="Describe the condition observed"
+            placeholder="Describe what is damaged and where it was observed"
           />
         </label>
+        <p className="mt-1.5 text-xs text-slate-500">Describe what is damaged and where it was observed. Use at least 5 characters.</p>
       </div>
 
       <fieldset>
@@ -43,6 +57,7 @@ export function DefectFields({
         <div className="mt-2 grid grid-cols-3 gap-2">
           {severities.map((severity) => {
             const selected = value?.severity === severity
+            const Icon = severityIcons[severity]
             return (
               <button
                 key={severity}
@@ -50,17 +65,23 @@ export function DefectFields({
                 onClick={() => onChange({ severity })}
                 aria-pressed={selected}
                 className={cn(
-                  'min-h-12 rounded-lg border text-xs font-bold transition-colors',
+                  'inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-colors',
                   selected
                     ? severityStyles[severity]
                     : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50',
                 )}
               >
+                <Icon aria-hidden="true" className="size-4" />
                 {severity}
               </button>
             )
           })}
         </div>
+        {value?.severity ? (
+          <p className={cn('mt-2 rounded-lg border p-3 text-xs font-semibold leading-5', severityStyles[value.severity])}>
+            {severityGuidance[value.severity]}
+          </p>
+        ) : null}
       </fieldset>
 
       <div>

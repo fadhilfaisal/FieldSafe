@@ -8,6 +8,7 @@ import { StatusBadge } from '../common/StatusBadge'
 import { ReviewStatusBadge } from './WorkflowBadges'
 
 export function ReviewCard({ review }: { review: SupervisorReviewListItem }) {
+  const pending = review.inspection.reviewStatus !== 'Reviewed'
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -56,7 +57,7 @@ export function ReviewCard({ review }: { review: SupervisorReviewListItem }) {
             to={`/supervisor/reviews/${review.inspection.id}`}
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-600"
           >
-            Review
+            {pending ? 'Review' : 'View Review'}
             <ArrowRight aria-hidden="true" className="size-4" />
           </Link>
         </div>

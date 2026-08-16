@@ -56,7 +56,7 @@ export function ManagerDefectsPage() {
           <div className="grid gap-5 xl:grid-cols-2">
             <Card className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Severity Breakdown</h2>
-              <p className="mt-1 text-sm text-slate-500">All reported defects grouped by originating severity.</p>
+              <p className="mt-1 text-sm text-slate-500">Severity dimension: all reported defects grouped by Minor, Major, or Critical risk.</p>
               {analytics.totalDefects === 0 ? (
                 <EmptyState icon={ShieldAlert} title="No defect severity data" description="No defects have been recorded in the operational dataset." />
               ) : (
@@ -70,7 +70,7 @@ export function ManagerDefectsPage() {
 
             <Card className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Defect Lifecycle</h2>
-              <p className="mt-1 text-sm text-slate-500">Current status of persisted defect records.</p>
+              <p className="mt-1 text-sm text-slate-500">Lifecycle dimension: current Open, Under Review, or Resolved status.</p>
               {analytics.totalDefects === 0 ? (
                 <EmptyState icon={ShieldAlert} title="No defect lifecycle data" description="Lifecycle metrics will appear when defects are reported." />
               ) : (

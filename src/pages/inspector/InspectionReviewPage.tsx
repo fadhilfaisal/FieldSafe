@@ -7,6 +7,7 @@ import { Button } from '../../components/common/Button'
 import { Card } from '../../components/common/Card'
 import { EmptyState } from '../../components/common/EmptyState'
 import { SeverityBadge } from '../../components/common/SeverityBadge'
+import { StatusBadge } from '../../components/common/StatusBadge'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { SignaturePad } from '../../components/inspection/SignaturePad'
 import { EvidencePreview } from '../../components/inspection/EvidencePreview'
@@ -139,6 +140,12 @@ export function InspectionReviewPage() {
   const draftResponses = workspace.draft?.responses ?? []
   const passed = draftResponses.filter((response) => response.result === 'Pass')
   const failed = draftResponses.filter((response) => response.result === 'Fail')
+  const criticalCount = failed.filter(
+    (response) => response.defect?.severity === 'Critical',
+  ).length
+  const majorCount = failed.filter(
+    (response) => response.defect?.severity === 'Major',
+  ).length
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -172,21 +179,37 @@ export function InspectionReviewPage() {
         </Card>
       </div>
 
-      {resultingEquipmentStatus === 'Out of Service' ? (
-        <div className="flex items-start gap-3 rounded-xl border border-danger-100 bg-danger-50 p-4 text-danger-700" role="alert">
-          <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-          <p className="text-sm font-bold leading-6">
-            Submitting this inspection will place {workspace.equipment.assetCode} OUT OF SERVICE.
-          </p>
+      {failed.length > 0 ? (
+        <div
+          className={resultingEquipmentStatus === 'Out of Service'
+            ? 'rounded-xl border border-danger-100 bg-danger-50 p-4 text-danger-700'
+            : resultingEquipmentStatus === 'Restricted'
+              ? 'rounded-xl border border-warning-100 bg-warning-50 p-4 text-warning-800'
+              : 'rounded-xl border border-brand-100 bg-brand-50 p-4 text-brand-800'}
+          role="alert"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+            <div className="text-sm font-bold leading-6">
+              <p>Inspection will be submitted as Failed.</p>
+              {criticalCount > 0 ? <p>{criticalCount} Critical defect{criticalCount === 1 ? '' : 's'} detected.</p> : null}
+              {criticalCount === 0 && majorCount > 0 ? <p>{majorCount} Major defect{majorCount === 1 ? '' : 's'} detected.</p> : null}
+              <p>
+                Equipment will be {resultingEquipmentStatus === 'Out of Service'
+                  ? 'Out of Service.'
+                  : resultingEquipmentStatus === 'Restricted'
+                    ? 'Restricted.'
+                    : 'Fit; unresolved Minor defects do not by themselves restrict equipment.'}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3"><StatusBadge status={resultingEquipmentStatus} /></div>
         </div>
-      ) : resultingEquipmentStatus === 'Restricted' ? (
-        <div className="flex items-start gap-3 rounded-xl border border-warning-100 bg-warning-50 p-4 text-warning-800">
-          <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-          <p className="text-sm font-bold leading-6">
-            Submitting this inspection will place {workspace.equipment.assetCode} in RESTRICTED status.
-          </p>
+      ) : (
+        <div className="rounded-xl border border-success-100 bg-success-50 p-4 text-sm font-bold text-success-700" role="status">
+          Inspection will be submitted as Passed. Equipment state after submission: {resultingEquipmentStatus}.
         </div>
-      ) : null}
+      )}
 
       <Card className="overflow-hidden">
         <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
@@ -251,7 +274,7 @@ export function InspectionReviewPage() {
         </p>
       ) : null}
 
-      <Button variant={failed.length > 0 ? 'danger' : 'primary'} size="lg" className="w-full" onClick={() => void submit()} disabled={submitting}>
+      <Button variant="primary" size="lg" className="w-full" onClick={() => void submit()} disabled={submitting}>
         <Send aria-hidden="true" className="size-5" />
         {submitting ? 'Submitting inspection…' : 'Submit Inspection'}
       </Button>

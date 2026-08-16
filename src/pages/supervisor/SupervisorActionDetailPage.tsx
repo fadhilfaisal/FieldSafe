@@ -19,6 +19,12 @@ import {
 } from '../../services/supervisorService'
 import { formatDate, formatDateTime } from '../../utils/format'
 
+const actionStatusHelp: Record<CorrectiveActionStatus, string> = {
+  Open: 'Corrective work has not started.',
+  'In Progress': 'Corrective work is underway.',
+  Done: 'Corrective work is complete; an unresolved originating defect still requires Supervisor verification.',
+}
+
 export function SupervisorActionDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
@@ -125,9 +131,10 @@ export function SupervisorActionDetailPage() {
               </select>
               <Button onClick={() => void saveStatus()} disabled={saving || status === item.action.status}>{saving ? 'Saving…' : 'Update Status'}</Button>
             </div>
-            <p className="mt-3 text-xs leading-5 text-slate-500">
-              Done records that corrective work is complete. It does not resolve the defect or verify the equipment as safe.
+            <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
+              {actionStatusHelp[status]}
             </p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Done does not resolve the defect or verify the equipment as safe.</p>
           </div>
         </Card>
 
