@@ -63,11 +63,11 @@ export function SupervisorHomePage() {
       {dashboard ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <MetricCard label="Pending Reviews" value={dashboard.pendingReviews.length} icon={ClipboardCheck} helpText="Submitted failed inspections awaiting Supervisor acknowledgement." reserveLabelSpace />
-            <MetricCard label="Open Actions" value={dashboard.openActionCount} icon={Wrench} helpText="Corrective actions currently Open or In Progress." reserveLabelSpace />
-            <MetricCard label="Overdue Actions" value={dashboard.overdueActionCount} icon={TimerReset} helpText="Unfinished corrective actions past their due date." reserveLabelSpace />
-            <MetricCard label="Critical Defects" value={dashboard.criticalDefectCount} icon={ShieldAlert} helpText="Unresolved defects with Critical severity." reserveLabelSpace />
-            <MetricCard label="Out-of-Service Equipment" value={dashboard.outOfServiceCount} icon={ShieldAlert} helpText="Equipment currently Out of Service due to unresolved safety risk." reserveLabelSpace />
+            <MetricCard label="Pending Reviews" value={dashboard.pendingReviews.length} icon={ClipboardCheck} helpText="Submitted failed inspections awaiting Supervisor acknowledgement." reserveLabelSpace iconVariant="quiet" />
+            <MetricCard label="Open Actions" value={dashboard.openActionCount} icon={Wrench} helpText="Corrective actions currently Open or In Progress." reserveLabelSpace iconVariant="quiet" />
+            <MetricCard label="Overdue Actions" value={dashboard.overdueActionCount} icon={TimerReset} helpText="Unfinished corrective actions past their due date." reserveLabelSpace iconVariant="quiet" />
+            <MetricCard label="Critical Defects" value={dashboard.criticalDefectCount} icon={ShieldAlert} helpText="Unresolved defects with Critical severity." reserveLabelSpace iconVariant="quiet" />
+            <MetricCard label="Out-of-Service Equipment" value={dashboard.outOfServiceCount} icon={ShieldAlert} helpText="Equipment currently Out of Service due to unresolved safety risk." reserveLabelSpace iconVariant="quiet" />
           </div>
 
           <section aria-labelledby="dashboard-reviews-title" className="space-y-3">

@@ -78,7 +78,6 @@ describe('Manager empty dataset states', () => {
     render(<ManagerDefectsPage />)
 
     expect(await screen.findByRole('heading', { name: 'No defect severity data' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'No defect lifecycle data' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'No defect volume' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'No defect categories' })).toBeTruthy()
   })

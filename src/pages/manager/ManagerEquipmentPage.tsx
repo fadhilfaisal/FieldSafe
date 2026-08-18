@@ -17,6 +17,12 @@ type TypeFilter = 'All' | EquipmentType
 
 const stateFilters: StateFilter[] = ['All', 'Fit', 'Restricted', 'Out of Service']
 const typeFilters: TypeFilter[] = ['All', 'Truck', 'Crane', 'Forklift', 'MEWP', 'Loader']
+const activeStateFilterStyles: Record<StateFilter, string> = {
+  All: 'border-brand-700 bg-brand-700 text-white',
+  Fit: 'border-success-600 bg-success-50 text-success-700',
+  Restricted: 'border-warning-600 bg-warning-50 text-warning-800',
+  'Out of Service': 'border-danger-600 bg-danger-50 text-danger-700',
+}
 
 export function ManagerEquipmentPage() {
   const [items, setItems] = useState<ManagerEquipmentListItem[]>([])
@@ -62,7 +68,7 @@ export function ManagerEquipmentPage() {
           <p className="text-sm font-bold text-slate-800">Safety state</p>
           <div className="mt-2 flex flex-wrap gap-2" aria-label="Equipment state filter">
             {stateFilters.map((status) => (
-              <button key={status} type="button" onClick={() => setStateFilter(status)} aria-pressed={stateFilter === status} className={cn('min-h-10 rounded-lg border px-4 text-sm font-semibold', stateFilter === status ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50')}>
+              <button key={status} type="button" onClick={() => setStateFilter(status)} aria-pressed={stateFilter === status} className={cn('min-h-10 rounded-lg border px-4 text-sm font-semibold transition-colors', stateFilter === status ? activeStateFilterStyles[status] : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50')}>
                 {status}
               </button>
             ))}

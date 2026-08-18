@@ -4,9 +4,16 @@ import { SeverityBadge } from '../common/SeverityBadge'
 import { StatusBadge } from '../common/StatusBadge'
 import type { ManagerEquipmentListItem } from '../../services/managerService'
 import { formatDateTime } from '../../utils/format'
+import { cn } from '../../utils/cn'
 
 interface EquipmentStatusTableProps {
   items: ManagerEquipmentListItem[]
+}
+
+const rowStateStyles = {
+  Fit: 'border-l-success-600',
+  Restricted: 'border-l-warning-600',
+  'Out of Service': 'border-l-danger-600',
 }
 
 export function EquipmentStatusTable({ items }: EquipmentStatusTableProps) {
@@ -26,7 +33,13 @@ export function EquipmentStatusTable({ items }: EquipmentStatusTableProps) {
         </thead>
         <tbody className="divide-y divide-slate-100 bg-white">
           {items.map((item) => (
-            <tr key={item.equipment.id} className="text-sm text-slate-600 hover:bg-slate-50/80">
+            <tr
+              key={item.equipment.id}
+              className={cn(
+                'border-l-4 text-sm text-slate-600 transition-colors hover:bg-slate-50/80',
+                rowStateStyles[item.status],
+              )}
+            >
               <td className="px-4 py-4">
                 <p className="font-bold text-brand-800">{item.equipment.assetCode}</p>
                 <p className="mt-1 min-w-48 font-semibold text-slate-900">{item.equipment.name}</p>

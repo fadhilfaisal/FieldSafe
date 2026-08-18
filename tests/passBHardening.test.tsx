@@ -154,7 +154,7 @@ describe('TASK-029 Pass B product hardening', () => {
     const help = await screen.findByRole('button', {
       name: 'Inspection Pass Rate definition',
     })
-    const tooltip = screen.getByRole('tooltip')
+    const tooltip = document.getElementById(help.getAttribute('aria-describedby')!)!
 
     expect(tooltip.textContent).toBe('Passed inspections ÷ completed inspections')
     expect(help.getAttribute('aria-describedby')).toBe(tooltip.id)
@@ -170,8 +170,8 @@ describe('TASK-029 Pass B product hardening', () => {
     ]) {
       const metricLabel = screen
         .getAllByText(label)
-        .find((element) => element.className.includes('text-sm font-medium'))
-      expect(metricLabel?.parentElement?.className).toContain('min-h-7')
+        .find((element) => element.parentElement?.className.includes('min-h-12'))
+      expect(metricLabel?.parentElement?.className).toContain('min-h-12')
     }
     expect(screen.queryByText('Across the available historical period')).toBeNull()
     expect(screen.queryByText('Inspections completed without a failed response')).toBeNull()
@@ -272,11 +272,20 @@ describe('TASK-029 Pass B product hardening', () => {
       expect(tooltip?.className).toContain('group-focus-within:opacity-100')
       help.focus()
       expect(document.activeElement).toBe(help)
-      expect(help.parentElement?.parentElement?.className).toContain('min-h-10')
+      expect(help.parentElement?.parentElement?.className).toContain('min-h-12')
     }
     expect(screen.queryByText('Submitted inspections awaiting acknowledgement')).toBeNull()
     expect(screen.queryByText('Open and in-progress corrective work')).toBeNull()
     expect(screen.queryByText('Unfinished actions past their due date')).toBeNull()
+    const quietIcons = document.querySelectorAll('[data-icon-variant="quiet"]')
+    expect(quietIcons).toHaveLength(5)
+    expect(
+      [...quietIcons].every(
+        (icon) =>
+          icon.className.includes('bg-slate-50') &&
+          icon.className.includes('border-slate-200'),
+      ),
+    ).toBe(true)
 
     cleanup()
     const action = (await fieldSafeRepository.getCorrectiveActions()).find(

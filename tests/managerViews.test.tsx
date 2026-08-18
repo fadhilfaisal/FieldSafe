@@ -79,11 +79,20 @@ describe('Manager read-only views', () => {
 
     await screen.findByRole('heading', { name: 'Equipment Status' })
     expect(await screen.findByRole('heading', { name: 'Fleet Status Board' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Out of Service' })).toBeTruthy()
+    const outOfServiceFilter = screen.getByRole('button', {
+      name: 'Out of Service',
+    })
+    await user.click(outOfServiceFilter)
+    expect(outOfServiceFilter.getAttribute('aria-pressed')).toBe('true')
+    expect(outOfServiceFilter.className).toContain('bg-danger-50')
     expect(screen.getByLabelText('Equipment type')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /save|create|update|resolve/i })).toBeNull()
 
-    await user.click(await screen.findByRole('link', { name: 'View TRK-001' }))
+    const equipmentLink = await screen.findByRole('link', { name: 'View TRK-001' })
+    expect(equipmentLink.closest('tr')?.className).toContain(
+      'border-l-danger-600',
+    )
+    await user.click(equipmentLink)
     await screen.findByRole('heading', { name: 'Volvo FMX Dump Truck' })
 
     expect(router.state.location.pathname).toBe('/manager/equipment/EQ-001')
