@@ -23,6 +23,7 @@ import type { StorageAdapter } from '../storage/storageAdapter'
 import type { FieldSafeRepository } from './fieldSafeRepository'
 import type {
   DefectResolutionPersistence,
+  InspectionRejectionPersistence,
   InspectionSubmissionPersistence,
 } from './fieldSafeRepository'
 
@@ -187,7 +188,8 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
     return (await this.getNotifications(userId)).filter(
       (notification): notification is InspectorNotification =>
         notification.type === 'NEW_ASSIGNMENT' ||
-        notification.type === 'OFFLINE_SYNC_COMPLETED',
+        notification.type === 'OFFLINE_SYNC_COMPLETED' ||
+        notification.type === 'INSPECTION_REWORK_REQUIRED',
     )
   }
 
@@ -263,7 +265,8 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
     )).filter(
       (notification): notification is InspectorNotification =>
         notification.type === 'NEW_ASSIGNMENT' ||
-        notification.type === 'OFFLINE_SYNC_COMPLETED',
+        notification.type === 'OFFLINE_SYNC_COMPLETED' ||
+        notification.type === 'INSPECTION_REWORK_REQUIRED',
     )
   }
 
@@ -459,6 +462,37 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
 
     data.defects[defectIndex] = clone(resolution.defect)
     data.equipment[equipmentIndex] = clone(resolution.equipment)
+    this.writeData(data)
+  }
+
+  async commitInspectionRejection(
+    rejection: InspectionRejectionPersistence,
+  ) {
+    const data = await this.readData()
+    const inspectionIndex = data.inspections.findIndex(
+      (item) => item.id === rejection.inspection.id,
+    )
+    if (inspectionIndex === -1) {
+      throw new Error('Cannot reject an inspection with a missing record.')
+    }
+
+    data.inspections[inspectionIndex] = clone(rejection.inspection)
+    const draftIndex = data.inspectionDrafts.findIndex(
+      (item) => item.inspectionId === rejection.draft.inspectionId,
+    )
+    if (draftIndex === -1) data.inspectionDrafts.push(clone(rejection.draft))
+    else data.inspectionDrafts[draftIndex] = clone(rejection.draft)
+
+    const notificationIndex = data.inspectorNotifications.findIndex(
+      (item) => item.id === rejection.notification.id,
+    )
+    if (notificationIndex === -1) {
+      data.inspectorNotifications.push(clone(rejection.notification))
+    } else {
+      data.inspectorNotifications[notificationIndex] = clone(
+        rejection.notification,
+      )
+    }
     this.writeData(data)
   }
 

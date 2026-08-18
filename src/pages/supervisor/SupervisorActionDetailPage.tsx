@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, ShieldAlert, Wrench } from 'lucide-react'
+import { ArrowLeft, Camera, CheckCircle2, ShieldAlert, Wrench } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
@@ -12,7 +12,8 @@ import { StatusBadge } from '../../components/common/StatusBadge'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { EvidencePreview } from '../../components/inspection/EvidencePreview'
 import { ActionStatusBadge, DefectStatusBadge, OverdueBadge } from '../../components/supervisor/WorkflowBadges'
-import type { CorrectiveActionStatus } from '../../domain/models'
+import { DEMO_EVIDENCE } from '../../domain/evidence'
+import type { CorrectiveActionStatus, EvidenceReference } from '../../domain/models'
 import {
   supervisorService,
   type SupervisorActionListItem,
@@ -41,6 +42,8 @@ export function SupervisorActionDetailPage() {
   const [confirmingResolution, setConfirmingResolution] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [closureEvidence, setClosureEvidence] =
+    useState<EvidenceReference | null>(null)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -49,6 +52,7 @@ export function SupervisorActionDetailPage() {
       const nextItem = await supervisorService.getActionDetail(id)
       setItem(nextItem)
       setStatus(nextItem.action.status)
+      setClosureEvidence(nextItem.action.closureEvidence ?? null)
       setError('')
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load corrective action.')
@@ -66,7 +70,11 @@ export function SupervisorActionDetailPage() {
     setSaving(true)
     setError('')
     try {
-      await supervisorService.updateCorrectiveActionStatus(id, status)
+      await supervisorService.updateCorrectiveActionStatus(
+        id,
+        status,
+        closureEvidence,
+      )
       setNotice(`Corrective action updated to ${status}.`)
       await load()
     } catch (saveError) {
@@ -150,6 +158,30 @@ export function SupervisorActionDetailPage() {
               {actionStatusHelp[status]}
             </p>
             <p className="mt-1 text-xs leading-5 text-slate-500">Done does not resolve the defect or verify the equipment as safe.</p>
+            {status === 'Done' ? (
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-600">Closure evidence</p>
+                {closureEvidence ? (
+                  <>
+                    <EvidencePreview evidence={closureEvidence} alt="Corrective action closure evidence" className="mt-3 h-32 w-full rounded-lg object-cover" />
+                    <Button className="mt-3" variant="secondary" onClick={() => setClosureEvidence(structuredClone(DEMO_EVIDENCE))}>
+                      <Camera aria-hidden="true" className="size-4" />
+                      Replace closure photo
+                    </Button>
+                  </>
+                ) : item.action.status === 'Done' ? (
+                  <p className="mt-2 text-sm text-slate-500">Closure evidence not recorded.</p>
+                ) : (
+                  <>
+                    <p className="mt-2 text-sm text-slate-600">Attach a simulated closure photo before marking this action Done.</p>
+                    <Button className="mt-3" variant="secondary" onClick={() => setClosureEvidence(structuredClone(DEMO_EVIDENCE))}>
+                      <Camera aria-hidden="true" className="size-4" />
+                      Attach closure photo
+                    </Button>
+                  </>
+                )}
+              </div>
+            ) : null}
           </div>
         </Card>
 

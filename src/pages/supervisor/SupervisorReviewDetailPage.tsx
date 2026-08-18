@@ -6,7 +6,7 @@ import {
   PenLine,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { Button } from '../../components/common/Button'
 import { Card } from '../../components/common/Card'
@@ -16,6 +16,7 @@ import { PageHeader } from '../../components/common/PageHeader'
 import { StatusBadge } from '../../components/common/StatusBadge'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { SupervisorReviewResponseRow } from '../../components/supervisor/SupervisorReviewResponseRow'
+import { ReviewRejectionDialog } from '../../components/supervisor/ReviewRejectionDialog'
 import { ReviewStatusBadge } from '../../components/supervisor/WorkflowBadges'
 import type { User } from '../../domain/models'
 import {
@@ -28,6 +29,7 @@ import { formatDateTime } from '../../utils/format'
 export function SupervisorReviewDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [review, setReview] = useState<SupervisorReviewDetail | null>(null)
   const [technicians, setTechnicians] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,6 +40,10 @@ export function SupervisorReviewDetailPage() {
   const [confirmingReview, setConfirmingReview] = useState(false)
   const [confirmationCount, setConfirmationCount] = useState(0)
   const [notice, setNotice] = useState('')
+  const [rejecting, setRejecting] = useState(false)
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [rejectionError, setRejectionError] = useState('')
 
   const load = useCallback(async () => {
     if (!id) return
@@ -71,7 +77,7 @@ export function SupervisorReviewDetailPage() {
         user.id,
         acknowledgeUnassignedDefects,
       )
-      setNotice('Inspection review marked as reviewed.')
+      setNotice('Inspection approved.')
       setConfirmingReview(false)
       await load()
     } catch (markError) {
@@ -83,6 +89,29 @@ export function SupervisorReviewDetailPage() {
       setMutationError(markError instanceof Error ? markError.message : 'Unable to update review status.')
     } finally {
       setMarking(false)
+    }
+  }
+
+  async function rejectReview() {
+    if (!id || !user) return
+    setRejecting(true)
+    setRejectionError('')
+    try {
+      await supervisorService.rejectInspectionReview(
+        id,
+        user.id,
+        rejectionReason,
+      )
+      setRejectDialogOpen(false)
+      navigate('/supervisor/reviews', { replace: true })
+    } catch (rejectError) {
+      setRejectionError(
+        rejectError instanceof Error
+          ? rejectError.message
+          : 'Unable to reject this inspection.',
+      )
+    } finally {
+      setRejecting(false)
     }
   }
 
@@ -186,14 +215,29 @@ export function SupervisorReviewDetailPage() {
             Completed with all checklist responses passing. No Supervisor acknowledgement is required.
           </p>
         ) : review.inspection.reviewStatus === 'Pending Review' ? (
-          <Button className="mt-5" onClick={requestMarkReviewed} disabled={marking}>
-            <CheckCircle2 aria-hidden="true" className="size-4" />
-            {marking ? 'Marking reviewed…' : 'Mark Review as Reviewed'}
-          </Button>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button onClick={requestMarkReviewed} disabled={marking || rejecting}>
+              <CheckCircle2 aria-hidden="true" className="size-4" />
+              {marking ? 'Approving…' : 'Approve Inspection'}
+            </Button>
+            <Button variant="danger" onClick={() => setRejectDialogOpen(true)} disabled={marking || rejecting}>
+              Reject
+            </Button>
+          </div>
         ) : review.inspection.reviewStatus === 'Reviewed' ? (
           <p className="mt-5 text-xs font-semibold text-success-700">Reviewed {formatDateTime(review.inspection.reviewedAt)}</p>
         ) : null}
       </Card>
+
+      {review.latestRejection ? (
+        <Card className="border-warning-200 bg-warning-50 p-4">
+          <p className="text-sm font-bold text-warning-900">Previously rejected</p>
+          <p className="mt-1 text-sm text-warning-900">{review.latestRejection.reason}</p>
+          <p className="mt-2 text-xs font-semibold text-warning-800">
+            Rejected by {review.latestRejection.supervisor?.name ?? 'Supervisor'} · {formatDateTime(review.latestRejection.rejectedAt)}
+          </p>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="p-5 text-center"><p className="text-3xl font-bold text-slate-950">{review.responses.length}</p><p className="mt-1 text-sm text-slate-500">Checklist Items</p></Card>
@@ -236,14 +280,26 @@ export function SupervisorReviewDetailPage() {
 
       {!cleanPass ? <ConfirmationDialog
         open={confirmingReview}
-        title="Mark inspection as reviewed?"
+        title="Approve inspection?"
         description={`${confirmationCount} unresolved defect${confirmationCount === 1 ? '' : 's'} ${confirmationCount === 1 ? 'has' : 'have'} no corrective action assigned. Mark this inspection as reviewed anyway?`}
-        confirmLabel="Mark Reviewed Anyway"
-        busyLabel="Marking reviewed…"
+        confirmLabel="Approve Anyway"
+        busyLabel="Approving…"
         busy={marking}
         onCancel={() => setConfirmingReview(false)}
         onConfirm={() => void markReviewed(true)}
       /> : null}
+      <ReviewRejectionDialog
+        open={rejectDialogOpen}
+        reason={rejectionReason}
+        busy={rejecting}
+        error={rejectionError}
+        onReasonChange={setRejectionReason}
+        onCancel={() => {
+          setRejectDialogOpen(false)
+          setRejectionError('')
+        }}
+        onConfirm={() => void rejectReview()}
+      />
     </div>
   )
 }

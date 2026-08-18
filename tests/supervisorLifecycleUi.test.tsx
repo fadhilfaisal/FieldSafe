@@ -72,6 +72,39 @@ beforeEach(() => window.localStorage.clear())
 afterEach(cleanup)
 
 describe('Supervisor lifecycle UI', () => {
+  it('requires a rejection reason and returns the inspection for rework', async () => {
+    const submission = await submitCriticalInspection()
+    const router = await renderSupervisorRoute(
+      `/supervisor/reviews/${submission.inspection.id}`,
+    )
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Reject' }))
+    const dialog = screen.getByRole('dialog', {
+      name: 'Return inspection for revision?',
+    })
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Return for Revision' }),
+    )
+    expect((await within(dialog).findByRole('alert')).textContent).toBe(
+      'Reason for revision is required.',
+    )
+
+    await user.type(
+      within(dialog).getByLabelText('Reason for revision'),
+      'Recheck the critical defect observation.',
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Return for Revision' }),
+    )
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/supervisor/reviews'))
+    expect(await fieldSafeRepository.getInspectionById('ASG-001')).toMatchObject({
+      status: 'In Progress',
+      reviewStatus: 'Rework Required',
+    })
+  })
+
   it('warns before Review and keeps unassigned remediation available afterward', async () => {
     const submission = await submitCriticalInspection()
     await renderSupervisorRoute(
@@ -81,11 +114,11 @@ describe('Supervisor lifecycle UI', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'Mark Review as Reviewed',
+        name: 'Approve Inspection',
       }),
     )
     const dialog = screen.getByRole('dialog', {
-      name: 'Mark inspection as reviewed?',
+      name: 'Approve inspection?',
     })
     expect(
       within(dialog).getByText(
@@ -98,11 +131,11 @@ describe('Supervisor lifecycle UI', () => {
 
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'Mark Reviewed Anyway',
+        name: 'Approve Anyway',
       }),
     )
 
-    await screen.findByText('Inspection review marked as reviewed.')
+    await screen.findByText('Inspection approved.')
     expect(
       (await fieldSafeRepository.getInspectionById('ASG-001'))?.reviewStatus,
     ).toBe('Reviewed')
@@ -124,7 +157,11 @@ describe('Supervisor lifecycle UI', () => {
       dueDate: '2026-08-21',
       supervisorId: 'USR-SUP-001',
     })
-    await supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+    await supervisor.updateCorrectiveActionStatus(
+      action.id,
+      'Done',
+      structuredClone(DEMO_EVIDENCE),
+    )
     await renderSupervisorRoute(`/supervisor/actions/${action.id}`)
     const user = userEvent.setup()
 

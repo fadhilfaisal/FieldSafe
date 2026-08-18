@@ -355,7 +355,13 @@ describe('Supervisor review and corrective action service', () => {
       (await flow.supervisor.updateCorrectiveActionStatus(action.id, 'In Progress')).status,
     ).toBe('In Progress')
     expect(
-      (await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')).status,
+      (
+        await flow.supervisor.updateCorrectiveActionStatus(
+          action.id,
+          'Done',
+          structuredClone(DEMO_EVIDENCE),
+        )
+      ).status,
     ).toBe('Done')
 
     const persistedDefect = (await flow.repository.getDefects()).find(
@@ -401,7 +407,11 @@ describe('Supervisor review and corrective action service', () => {
       flow.supervisor,
       submission.defects[0].id,
     )
-    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+    await flow.supervisor.updateCorrectiveActionStatus(
+      action.id,
+      'Done',
+      structuredClone(DEMO_EVIDENCE),
+    )
 
     expect(
       (await flow.gate.checkEquipment(submission.equipment.id)).decision,
@@ -455,7 +465,11 @@ describe('Supervisor review and corrective action service', () => {
       flow.supervisor,
       criticalDefect.id,
     )
-    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+    await flow.supervisor.updateCorrectiveActionStatus(
+      action.id,
+      'Done',
+      structuredClone(DEMO_EVIDENCE),
+    )
 
     const resolution = await flow.supervisor.verifyAndResolveDefect(
       action.id,
@@ -478,7 +492,11 @@ describe('Supervisor review and corrective action service', () => {
       flow.supervisor,
       submission.defects[0].id,
     )
-    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+    await flow.supervisor.updateCorrectiveActionStatus(
+      action.id,
+      'Done',
+      structuredClone(DEMO_EVIDENCE),
+    )
 
     const resolution = await flow.supervisor.verifyAndResolveDefect(
       action.id,
@@ -500,7 +518,11 @@ describe('Supervisor review and corrective action service', () => {
       flow.supervisor,
       submission.defects[0].id,
     )
-    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+    await flow.supervisor.updateCorrectiveActionStatus(
+      action.id,
+      'Done',
+      structuredClone(DEMO_EVIDENCE),
+    )
     await flow.supervisor.verifyAndResolveDefect(action.id, 'USR-SUP-001')
     const before = flow.storage.getItem(OPERATIONAL_KEY)
 
@@ -564,7 +586,11 @@ describe('Supervisor review and corrective action service', () => {
       flow.supervisor,
       submission.defects[0].id,
     )
-    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+    await flow.supervisor.updateCorrectiveActionStatus(
+      action.id,
+      'Done',
+      structuredClone(DEMO_EVIDENCE),
+    )
     await flow.supervisor.verifyAndResolveDefect(action.id, 'USR-SUP-001')
 
     const reviewed = await flow.supervisor.getReviewDetail(
@@ -588,7 +614,11 @@ describe('Supervisor review and corrective action service', () => {
       flow.supervisor,
       submission.defects[0].id,
     )
-    await flow.supervisor.updateCorrectiveActionStatus(action.id, 'Done')
+    await flow.supervisor.updateCorrectiveActionStatus(
+      action.id,
+      'Done',
+      structuredClone(DEMO_EVIDENCE),
+    )
     await flow.supervisor.verifyAndResolveDefect(action.id, 'USR-SUP-001')
 
     await flow.repository.resetDemoData()

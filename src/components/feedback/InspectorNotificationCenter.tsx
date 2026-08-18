@@ -11,7 +11,9 @@ export function InspectorNotificationCenter() {
       emptyMessage="No Inspector notifications."
       triggerClassName="text-blue-100 hover:bg-white/10 hover:text-white"
       iconFor={(notification) =>
-        notification.type === 'NEW_ASSIGNMENT' ? ClipboardList : History
+        notification.type === 'OFFLINE_SYNC_COMPLETED'
+          ? History
+          : ClipboardList
       }
     />
   )

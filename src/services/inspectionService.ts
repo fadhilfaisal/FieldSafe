@@ -439,54 +439,80 @@ export class InspectionService {
           : {}),
       }
     })
-    const defects: Defect[] = workspace.items.flatMap((item) => {
+    const submittedDefects: Defect[] = workspace.items.flatMap((item) => {
       const draftResponse = responseByItem.get(item.id)!
       if (draftResponse.result !== 'Fail') return []
       const defect = draftResponse.defect!
+      const checklistResponseId = `RSP-${workspace.inspection.id}-${String(item.sequence).padStart(2, '0')}`
+      const previousResponseId = workspace.responses.find(
+        (response) => response.checklistItemId === item.id,
+      )?.id
+      const existing = workspace.defects.find(
+        (candidate) =>
+          candidate.checklistResponseId === checklistResponseId ||
+          candidate.checklistResponseId === previousResponseId,
+      )
+      const defectId =
+        existing?.id ??
+        `DEF-${workspace.inspection.id}-${String(item.sequence).padStart(2, '0')}`
       return [
         {
-          id: `DEF-${workspace.inspection.id}-${String(item.sequence).padStart(2, '0')}`,
+          ...existing,
+          id: defectId,
           inspectionId: workspace.inspection.id,
           equipmentId: workspace.equipment.id,
-          checklistResponseId: `RSP-${workspace.inspection.id}-${String(item.sequence).padStart(2, '0')}`,
+          checklistResponseId,
           reportedByUserId: inspectorId,
           title: `${item.category} condition requires attention`,
           description: defect.description.trim(),
           severity: defect.severity!,
           evidenceReference: defect.evidenceReference!,
-          status: 'Open',
-          reportedAt: submittedAt,
-          resolvedAt: null,
-          resolvedByUserId: null,
+          status: existing?.status ?? 'Open',
+          reportedAt: existing?.reportedAt ?? submittedAt,
+          resolvedAt: existing?.resolvedAt ?? null,
+          resolvedByUserId: existing?.resolvedByUserId ?? null,
         },
       ]
     })
+    const submittedDefectIds = new Set(
+      submittedDefects.map((defect) => defect.id),
+    )
+    const defects = workspace.defects
+      .filter((defect) => !submittedDefectIds.has(defect.id))
+      .concat(submittedDefects)
     const [allDefectRecords, users] = await Promise.all([
       this.repository.getDefects(),
       this.repository.getUsers(),
     ])
     const allDefects = allDefectRecords.filter(
-      (defect) => defect.equipmentId === workspace.equipment.id,
+      (defect) =>
+        defect.equipmentId === workspace.equipment.id &&
+        defect.inspectionId !== workspace.inspection.id,
     )
     const equipment: Equipment = {
       ...workspace.equipment,
       status: deriveEquipmentStatus(allDefects.concat(defects)),
       lastInspectionAt: submittedAt,
     }
+    const resubmittingRework =
+      workspace.inspection.reviewStatus === 'Rework Required'
     const inspection: Inspection = {
       ...workspace.inspection,
       status: 'Completed',
-      result: defects.length > 0 ? 'Fail' : 'Pass',
+      result: submittedDefects.length > 0 ? 'Fail' : 'Pass',
       completedAt: submittedAt,
       submittedAt,
       signature: workspace.draft.signature,
       syncStatus: connectivity === 'OFFLINE' ? 'PENDING_SYNC' : 'SYNCED',
-      reviewStatus: defects.length > 0 ? 'Pending Review' : null,
+      reviewStatus:
+        resubmittingRework || submittedDefects.length > 0
+          ? 'Pending Review'
+          : null,
       reviewedAt: null,
       reviewedByUserId: null,
     }
     const notifications =
-      defects.length === 0
+      inspection.reviewStatus !== 'Pending Review'
         ? []
         : users
             .filter(
@@ -500,7 +526,9 @@ export class InspectionService {
                 equipment,
                 checklist: workspace.checklist,
                 highestSeverity: getHighestDefectSeverity(
-                  defects.map((defect) => defect.severity),
+                  defects
+                    .filter((defect) => defect.status !== 'Resolved')
+                    .map((defect) => defect.severity),
                 ),
               }),
             )

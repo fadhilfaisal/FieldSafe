@@ -27,12 +27,13 @@ export function InspectionCard({
   busy = false,
 }: InspectionCardProps) {
   const inProgress = item.inspection.status === 'In Progress'
+  const reworkRequired = item.inspection.reviewStatus === 'Rework Required'
 
   return (
     <Card className="group relative p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/20 sm:p-5">
       <CardNavigationOverlay
         to={to}
-        label={`${inProgress ? 'Continue' : 'Start'} inspection for ${item.equipment.assetCode}`}
+        label={`${reworkRequired ? 'Revise' : inProgress ? 'Continue' : 'Start'} inspection for ${item.equipment.assetCode}`}
       />
       <div className="pointer-events-none relative z-20 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
@@ -41,7 +42,11 @@ export function InspectionCard({
               {item.equipment.assetCode}
             </span>
             <span className="rounded-full bg-brand-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-700">
-              {inProgress ? 'In progress' : 'Assigned'}
+              {reworkRequired
+                ? 'Revision Required'
+                : inProgress
+                  ? 'In progress'
+                  : 'Assigned'}
             </span>
             {item.overdue ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-danger-100 bg-danger-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-danger-700">
@@ -77,7 +82,13 @@ export function InspectionCard({
           ) : (
             <Play aria-hidden="true" className="size-4" />
           )}
-          {busy ? 'Opening…' : inProgress ? 'Continue' : 'Start Inspection'}
+          {busy
+            ? 'Opening…'
+            : reworkRequired
+              ? 'Revise Inspection'
+              : inProgress
+                ? 'Continue'
+                : 'Start Inspection'}
         </Button>
       </div>
     </Card>

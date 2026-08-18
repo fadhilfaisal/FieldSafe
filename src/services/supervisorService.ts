@@ -6,10 +6,14 @@ import type {
   CorrectiveActionStatus,
   Defect,
   DefectSeverity,
+  DraftChecklistResponse,
   Equipment,
+  EvidenceReference,
   Inspection,
+  InspectionDraft,
   User,
 } from '../domain/models'
+import { createInspectionReworkNotification } from '../domain/notifications'
 import {
   deriveEquipmentStatus,
   getHighestDefectSeverity,
@@ -38,6 +42,11 @@ export interface SupervisorReviewDetail extends SupervisorReviewListItem {
   responses: SupervisorReviewResponse[]
   actions: CorrectiveAction[]
   unassignedUnresolvedDefectCount: number
+  latestRejection: {
+    reason: string
+    rejectedAt: string
+    supervisor: User | null
+  } | null
 }
 
 export interface SupervisorActionListItem {
@@ -117,8 +126,7 @@ export class SupervisorService {
           inspection.status === 'Completed' &&
           inspection.submittedAt !== null &&
           (status === 'All' ||
-            (inspection.result === 'Fail' &&
-              inspection.reviewStatus === status)),
+            inspection.reviewStatus === status),
       )
       .map((inspection) => {
         const assignedEquipment = equipment.find(
@@ -184,12 +192,13 @@ export class SupervisorService {
   }
 
   async getReviewDetail(inspectionId: string): Promise<SupervisorReviewDetail> {
-    const [reviews, responses, items, defects, actions] = await Promise.all([
+    const [reviews, responses, items, defects, actions, users] = await Promise.all([
       this.getReviews('All'),
       this.repository.getChecklistResponses(inspectionId),
       this.repository.getChecklistItems(),
       this.repository.getDefects(inspectionId),
       this.repository.getCorrectiveActions(),
+      this.repository.getUsers(),
     ])
     const review = reviews.find(
       (item) => item.inspection.id === inspectionId,
@@ -220,6 +229,7 @@ export class SupervisorService {
     const reviewActions = actions.filter((action) =>
       defects.some((defect) => defect.id === action.defectId),
     )
+    const rejection = review.inspection.rejectionHistory?.at(-1)
 
     return {
       ...review,
@@ -230,6 +240,15 @@ export class SupervisorService {
           defect.status !== 'Resolved' &&
           !reviewActions.some((action) => action.defectId === defect.id),
       ).length,
+      latestRejection: rejection
+        ? {
+            reason: rejection.reason,
+            rejectedAt: rejection.rejectedAt,
+            supervisor:
+              users.find((user) => user.id === rejection.rejectedByUserId) ??
+              null,
+          }
+        : null,
     }
   }
 
@@ -242,7 +261,11 @@ export class SupervisorService {
     if (!inspection || inspection.status !== 'Completed') {
       throw new SupervisorWorkflowError('Inspection review not found.')
     }
-    if (inspection.result !== 'Fail') {
+    if (
+      inspection.result !== 'Fail' &&
+      !(inspection.rejectionHistory?.length &&
+        inspection.reviewStatus === 'Pending Review')
+    ) {
       throw new SupervisorWorkflowError(
         'Passed inspections do not require Supervisor review.',
       )
@@ -275,6 +298,113 @@ export class SupervisorService {
       reviewedAt: this.now(),
       reviewedByUserId: supervisorId,
     })
+  }
+
+  async rejectInspectionReview(
+    inspectionId: string,
+    supervisorId: string,
+    reasonInput: string,
+  ) {
+    const reason = reasonInput.trim()
+    if (!reason) {
+      throw new SupervisorWorkflowError('Reason for revision is required.')
+    }
+
+    const [inspection, users, equipment, checklists, responses, defects] =
+      await Promise.all([
+        this.repository.getInspectionById(inspectionId),
+        this.repository.getUsers(),
+        this.repository.getEquipment(),
+        this.repository.getChecklists(),
+        this.repository.getChecklistResponses(inspectionId),
+        this.repository.getDefects(inspectionId),
+      ])
+    if (
+      !inspection ||
+      inspection.status !== 'Completed' ||
+      inspection.reviewStatus !== 'Pending Review'
+    ) {
+      throw new SupervisorWorkflowError('Pending inspection review not found.')
+    }
+    const supervisor = users.find(
+      (user) =>
+        user.id === supervisorId &&
+        user.role === 'Supervisor' &&
+        user.isActive,
+    )
+    const relatedEquipment = equipment.find(
+      (item) => item.id === inspection.equipmentId,
+    )
+    const checklist = checklists.find(
+      (item) => item.id === inspection.checklistId,
+    )
+    if (!supervisor || !relatedEquipment || !checklist) {
+      throw new SupervisorWorkflowError(
+        'Inspection rejection context could not be resolved.',
+      )
+    }
+
+    const rejectedAt = this.now()
+    const defectByResponse = new Map(
+      defects.map((defect) => [defect.checklistResponseId, defect]),
+    )
+    const draftResponses: DraftChecklistResponse[] = responses.flatMap(
+      (response) => {
+        if (response.result === 'Not Applicable') return []
+        const defect = defectByResponse.get(response.id)
+        return [{
+          checklistItemId: response.checklistItemId,
+          result: response.result,
+          defect:
+            response.result === 'Fail'
+              ? {
+                  description: defect?.description ?? response.notes ?? '',
+                  severity: defect?.severity ?? null,
+                  evidenceReference: defect?.evidenceReference ?? null,
+                }
+              : null,
+        }]
+      },
+    )
+    const draft: InspectionDraft = {
+      inspectionId: inspection.id,
+      responses: draftResponses,
+      signature: null,
+      updatedAt: rejectedAt,
+    }
+    const rejectionHistory = [
+      ...(inspection.rejectionHistory ?? []),
+      {
+        reason,
+        rejectedByUserId: supervisor.id,
+        rejectedAt,
+        submittedAt: inspection.submittedAt,
+      },
+    ]
+    const rejectedInspection: Inspection = {
+      ...inspection,
+      status: 'In Progress',
+      reviewStatus: 'Rework Required',
+      reviewedAt: null,
+      reviewedByUserId: null,
+      rejectionHistory,
+    }
+    const notification = createInspectionReworkNotification({
+      inspection: rejectedInspection,
+      equipment: relatedEquipment,
+      checklist,
+      supervisor,
+      reason,
+      rejectionNumber: rejectionHistory.length,
+      createdAt: rejectedAt,
+    })
+
+    await this.repository.commitInspectionRejection({
+      inspection: rejectedInspection,
+      draft,
+      notification,
+    })
+    return { inspection: rejectedInspection, draft, notification }
   }
 
   async getTechnicians() {
@@ -402,6 +532,7 @@ export class SupervisorService {
       createdAt,
       dueAt: `${input.dueDate}T23:59:59.999Z`,
       completedAt: null,
+      closureEvidence: null,
     }
 
     return this.repository.saveCorrectiveAction(action)
@@ -410,16 +541,31 @@ export class SupervisorService {
   async updateCorrectiveActionStatus(
     actionId: string,
     status: CorrectiveActionStatus,
+    closureEvidence?: EvidenceReference | null,
   ) {
     const action = await this.repository.getCorrectiveActionById(actionId)
     if (!action) {
       throw new SupervisorWorkflowError('Corrective action not found.')
     }
 
+    if (
+      status === 'Done' &&
+      action.status !== 'Done' &&
+      !(closureEvidence ?? action.closureEvidence)
+    ) {
+      throw new SupervisorWorkflowError(
+        'Attach closure evidence before marking this action Done.',
+      )
+    }
+
     return this.repository.saveCorrectiveAction({
       ...action,
       status,
       completedAt: status === 'Done' ? this.now() : null,
+      closureEvidence:
+        closureEvidence === undefined
+          ? action.closureEvidence ?? null
+          : closureEvidence,
     })
   }
 

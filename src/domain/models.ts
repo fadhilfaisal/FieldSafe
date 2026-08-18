@@ -48,13 +48,17 @@ export interface ChecklistItem {
 
 export type InspectionStatus = 'Assigned' | 'In Progress' | 'Completed'
 export type InspectionResult = 'Pass' | 'Fail'
-export type InspectionReviewStatus = 'Pending Review' | 'Reviewed'
+export type InspectionReviewStatus =
+  | 'Pending Review'
+  | 'Rework Required'
+  | 'Reviewed'
 export type InspectionSyncStatus = 'SYNCED' | 'PENDING_SYNC'
 export type SimulatedConnectivityState = 'ONLINE' | 'OFFLINE'
 
 export type InspectorNotificationType =
   | 'NEW_ASSIGNMENT'
   | 'OFFLINE_SYNC_COMPLETED'
+  | 'INSPECTION_REWORK_REQUIRED'
 
 export type SupervisorNotificationType = 'FAILED_INSPECTION_REVIEW'
 export type UserNotificationType =
@@ -107,6 +111,15 @@ export interface Inspection {
   reviewStatus: InspectionReviewStatus | null
   reviewedAt: IsoDateTime | null
   reviewedByUserId: EntityId | null
+  /** Optional so existing schema-v6 browser records remain compatible. */
+  rejectionHistory?: InspectionRejection[]
+}
+
+export interface InspectionRejection {
+  reason: string
+  rejectedByUserId: EntityId
+  rejectedAt: IsoDateTime
+  submittedAt: IsoDateTime | null
 }
 
 export type ChecklistResponseResult = 'Pass' | 'Fail' | 'Not Applicable'
@@ -177,6 +190,8 @@ export interface CorrectiveAction {
   createdAt: IsoDateTime
   dueAt: IsoDateTime
   completedAt: IsoDateTime | null
+  /** Required for new Done transitions; optional for legacy Done records. */
+  closureEvidence?: EvidenceReference | null
 }
 
 export interface OperationalData {

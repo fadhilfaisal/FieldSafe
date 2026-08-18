@@ -153,6 +153,7 @@ export function InspectionReviewPage() {
     )
   }
   const draftResponses = workspace.draft?.responses ?? []
+  const latestRejection = workspace.inspection.rejectionHistory?.at(-1)
   const passed = draftResponses.filter((response) => response.result === 'Pass')
   const failed = draftResponses.filter((response) => response.result === 'Fail')
   const criticalCount = failed.filter(
@@ -178,6 +179,13 @@ export function InspectionReviewPage() {
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Review & Sign</h1>
         <p className="mt-2 text-sm text-slate-600">Confirm all responses before submitting this inspection.</p>
       </div>
+
+      {workspace.inspection.reviewStatus === 'Rework Required' && latestRejection ? (
+        <div className="rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-900" role="status">
+          <p className="font-bold">Revision requested by Supervisor</p>
+          <p className="mt-1 leading-5">{latestRejection.reason}</p>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-3 gap-3">
         <Card className="p-4 text-center">

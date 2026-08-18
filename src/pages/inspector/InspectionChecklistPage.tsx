@@ -82,6 +82,7 @@ export function InspectionChecklistPage() {
     navigate(`/inspector/inspection/${workspace.inspection.id}/result`, { replace: true })
     return null
   }
+  const latestRejection = workspace.inspection.rejectionHistory?.at(-1)
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 pb-4" data-testid="checklist-safe-area">
@@ -93,7 +94,11 @@ export function InspectionChecklistPage() {
               <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">{workspace.checklist.name}</h1>
               <p className="mt-1 text-sm text-slate-500">{workspace.equipment.site}</p>
             </div>
-            <span className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700">In Progress</span>
+            <span className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700">
+              {workspace.inspection.reviewStatus === 'Rework Required'
+                ? 'Revision Required'
+                : 'In Progress'}
+            </span>
           </div>
           <div className="mt-5">
             <InspectionProgress completed={completed} total={workspace.items.length} />
@@ -109,6 +114,14 @@ export function InspectionChecklistPage() {
         completed={completed}
         total={workspace.items.length}
       />
+
+      {workspace.inspection.reviewStatus === 'Rework Required' && latestRejection ? (
+        <div className="rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-900" role="status">
+          <p className="font-bold">Supervisor requested revision</p>
+          <p className="mt-1 leading-5">{latestRejection.reason}</p>
+          <p className="mt-2 text-xs font-semibold">Review the retained responses, update anything required, then sign and resubmit.</p>
+        </div>
+      ) : null}
 
       {showValidation && !validation.isChecklistComplete ? (
         <div className="flex items-start gap-3 rounded-xl border border-danger-100 bg-danger-50 p-4 text-sm text-danger-700" role="alert">
