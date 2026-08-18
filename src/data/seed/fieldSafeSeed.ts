@@ -1,4 +1,8 @@
-import { deriveEquipmentStatus } from '../../domain/safety'
+import {
+  deriveEquipmentStatus,
+  getHighestDefectSeverity,
+} from '../../domain/safety'
+import { createSupervisorReviewNotification } from '../../domain/notifications'
 import { DEMO_EVIDENCE } from '../../domain/evidence'
 import type {
   Checklist,
@@ -296,6 +300,49 @@ export function createSeedInspectorNotifications(
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
+export function createSeedSupervisorNotifications(
+  inspections: Inspection[],
+  equipment: Equipment[],
+  availableChecklists: Checklist[],
+  defects: Defect[],
+): OperationalData['inspectorNotifications'] {
+  return inspections
+    .filter(
+      (inspection) =>
+        inspection.status === 'Completed' &&
+        inspection.result === 'Fail' &&
+        inspection.reviewStatus === 'Pending Review',
+    )
+    .sort((a, b) =>
+      (b.submittedAt ?? b.completedAt ?? '').localeCompare(
+        a.submittedAt ?? a.completedAt ?? '',
+      ),
+    )
+    .slice(0, 2)
+    .flatMap((inspection) => {
+      const assignedEquipment = equipment.find(
+        (item) => item.id === inspection.equipmentId,
+      )
+      const checklist = availableChecklists.find(
+        (item) => item.id === inspection.checklistId,
+      )
+      if (!assignedEquipment || !checklist) return []
+      return [
+        createSupervisorReviewNotification({
+          supervisorId: 'USR-SUP-001',
+          inspection,
+          equipment: assignedEquipment,
+          checklist,
+          highestSeverity: getHighestDefectSeverity(
+            defects
+              .filter((defect) => defect.inspectionId === inspection.id)
+              .map((defect) => defect.severity),
+          ),
+        }),
+      ]
+    })
+}
+
 export function createFieldSafeSeedData(): OperationalData {
   const checklistItems = createChecklistItems()
   const equipment: Equipment[] = equipmentDefinitions.map((definition, index) => ({
@@ -429,10 +476,18 @@ export function createFieldSafeSeedData(): OperationalData {
     defects,
     correctiveActions,
     inspectionDrafts: [],
-    inspectorNotifications: createSeedInspectorNotifications(
-      inspections,
-      equipment,
-      checklists,
-    ),
+    inspectorNotifications: [
+      ...createSeedInspectorNotifications(
+        inspections,
+        equipment,
+        checklists,
+      ),
+      ...createSeedSupervisorNotifications(
+        inspections,
+        equipment,
+        checklists,
+        defects,
+      ),
+    ],
   }
 }

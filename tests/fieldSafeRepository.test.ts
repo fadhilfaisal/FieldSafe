@@ -72,10 +72,15 @@ describe('deterministic FieldSafe seed data', () => {
     expect(failCount).toBe(12)
     expect(seed.defects).toHaveLength(12)
     expect(seed.correctiveActions).toHaveLength(12)
-    expect(seed.inspectorNotifications).toHaveLength(4)
+    expect(seed.inspectorNotifications).toHaveLength(6)
     expect(
       seed.inspectorNotifications.filter(
         (notification) => notification.userId === 'USR-INSP-001',
+      ),
+    ).toHaveLength(2)
+    expect(
+      seed.inspectorNotifications.filter(
+        (notification) => notification.userId === 'USR-SUP-001',
       ),
     ).toHaveLength(2)
     expect(

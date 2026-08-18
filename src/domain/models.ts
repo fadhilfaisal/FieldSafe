@@ -56,16 +56,29 @@ export type InspectorNotificationType =
   | 'NEW_ASSIGNMENT'
   | 'OFFLINE_SYNC_COMPLETED'
 
-export interface InspectorNotification {
+export type SupervisorNotificationType = 'FAILED_INSPECTION_REVIEW'
+export type UserNotificationType =
+  | InspectorNotificationType
+  | SupervisorNotificationType
+
+export interface UserNotification {
   id: EntityId
   userId: EntityId
-  type: InspectorNotificationType
+  type: UserNotificationType
   title: string
   message: string
   createdAt: IsoDateTime
   readAt: IsoDateTime | null
   targetRoute: string | null
   inspectionId: EntityId | null
+}
+
+export type InspectorNotification = UserNotification & {
+  type: InspectorNotificationType
+}
+
+export type SupervisorNotification = UserNotification & {
+  type: SupervisorNotificationType
 }
 
 export interface SignaturePoint {
@@ -177,5 +190,6 @@ export interface OperationalData {
   defects: Defect[]
   correctiveActions: CorrectiveAction[]
   inspectionDrafts: InspectionDraft[]
-  inspectorNotifications: InspectorNotification[]
+  /** Legacy storage field retained so existing browser data needs no migration. */
+  inspectorNotifications: UserNotification[]
 }

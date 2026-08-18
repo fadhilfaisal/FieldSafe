@@ -21,8 +21,8 @@ import {
 
 const managerDestinations = [
   {
-    title: 'Pass Rate',
-    description: 'Inspection completion, pass rate, and equipment-type performance.',
+    title: 'Compliance',
+    description: 'Inspection pass performance and compliance visibility by equipment type.',
     to: '/manager/compliance',
     icon: ClipboardCheck,
   },

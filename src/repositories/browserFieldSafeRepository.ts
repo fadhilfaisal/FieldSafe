@@ -17,6 +17,7 @@ import type {
   OperationalData,
   SimulatedConnectivityState,
   User,
+  UserNotification,
 } from '../domain/models'
 import type { StorageAdapter } from '../storage/storageAdapter'
 import type { FieldSafeRepository } from './fieldSafeRepository'
@@ -183,6 +184,20 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
   async getInspectorNotifications(
     userId: string,
   ): Promise<InspectorNotification[]> {
+    return (await this.getNotifications(userId)).filter(
+      (notification): notification is InspectorNotification =>
+        notification.type === 'NEW_ASSIGNMENT' ||
+        notification.type === 'OFFLINE_SYNC_COMPLETED',
+    )
+  }
+
+  async saveInspectorNotification(
+    notification: InspectorNotification,
+  ): Promise<InspectorNotification> {
+    return (await this.saveNotification(notification)) as InspectorNotification
+  }
+
+  async getNotifications(userId: string): Promise<UserNotification[]> {
     return clone(
       (await this.readData()).inspectorNotifications.filter(
         (notification) => notification.userId === userId,
@@ -190,9 +205,9 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
     )
   }
 
-  async saveInspectorNotification(
-    notification: InspectorNotification,
-  ): Promise<InspectorNotification> {
+  async saveNotification(
+    notification: UserNotification,
+  ): Promise<UserNotification> {
     const data = await this.readData()
     const index = data.inspectorNotifications.findIndex(
       (item) => item.id === notification.id,
@@ -210,12 +225,24 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
     userId: string,
     readAt: string,
   ): Promise<InspectorNotification> {
+    return (await this.markNotificationRead(
+      notificationId,
+      userId,
+      readAt,
+    )) as InspectorNotification
+  }
+
+  async markNotificationRead(
+    notificationId: string,
+    userId: string,
+    readAt: string,
+  ): Promise<UserNotification> {
     const data = await this.readData()
     const index = data.inspectorNotifications.findIndex(
       (item) => item.id === notificationId && item.userId === userId,
     )
     if (index === -1) {
-      throw new Error('Inspector notification not found.')
+      throw new Error('Notification not found.')
     }
 
     data.inspectorNotifications[index] = {
@@ -230,6 +257,20 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
     userId: string,
     readAt: string,
   ): Promise<InspectorNotification[]> {
+    return (await this.markAllNotificationsRead(
+      userId,
+      readAt,
+    )).filter(
+      (notification): notification is InspectorNotification =>
+        notification.type === 'NEW_ASSIGNMENT' ||
+        notification.type === 'OFFLINE_SYNC_COMPLETED',
+    )
+  }
+
+  async markAllNotificationsRead(
+    userId: string,
+    readAt: string,
+  ): Promise<UserNotification[]> {
     const data = await this.readData()
     data.inspectorNotifications = data.inspectorNotifications.map(
       (notification) =>
@@ -371,6 +412,16 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
     data.defects = data.defects
       .filter((item) => item.inspectionId !== submission.inspection.id)
       .concat(clone(submission.defects))
+    for (const notification of submission.notifications ?? []) {
+      const notificationIndex = data.inspectorNotifications.findIndex(
+        (item) => item.id === notification.id,
+      )
+      if (notificationIndex === -1) {
+        data.inspectorNotifications.push(clone(notification))
+      } else {
+        data.inspectorNotifications[notificationIndex] = clone(notification)
+      }
+    }
     data.inspectionDrafts = data.inspectionDrafts.filter(
       (item) => item.inspectionId !== submission.inspection.id,
     )

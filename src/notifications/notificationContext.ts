@@ -1,8 +1,8 @@
 import { createContext } from 'react'
-import type { InspectorNotification } from '../domain/models'
+import type { UserNotification } from '../domain/models'
 
-export interface InspectorNotificationContextValue {
-  notifications: InspectorNotification[]
+export interface UserNotificationContextValue {
+  notifications: UserNotification[]
   unreadCount: number
   loading: boolean
   error: string
@@ -10,6 +10,8 @@ export interface InspectorNotificationContextValue {
   markRead(notificationId: string): Promise<void>
   markAllRead(): Promise<void>
 }
+
+export type InspectorNotificationContextValue = UserNotificationContextValue
 
 export const InspectorNotificationContext =
   createContext<InspectorNotificationContextValue | null>(null)

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, Check, ClipboardCheck, Send, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ClipboardCheck, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
@@ -6,12 +6,11 @@ import { useConnectivity } from '../../connectivity/useConnectivity'
 import { Button } from '../../components/common/Button'
 import { Card } from '../../components/common/Card'
 import { EmptyState } from '../../components/common/EmptyState'
-import { SeverityBadge } from '../../components/common/SeverityBadge'
 import { StatusBadge } from '../../components/common/StatusBadge'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { useToast } from '../../components/feedback/useToast'
 import { SignaturePad } from '../../components/inspection/SignaturePad'
-import { EvidencePreview } from '../../components/inspection/EvidencePreview'
+import { ReadOnlyInspectionResponseRow } from '../../components/inspection/ReadOnlyInspectionResponseRow'
 import type { EquipmentStatus, SignatureData } from '../../domain/models'
 import {
   inspectionService,
@@ -235,45 +234,16 @@ export function InspectionReviewPage() {
           {workspace.items.map((item) => {
             const response = draftResponses.find((candidate) => candidate.checklistItemId === item.id)!
             return (
-              <div key={item.id} className="flex items-center justify-between gap-4 px-5 py-3">
-                <span className="text-sm font-medium text-slate-700">{item.sequence}. {item.category}</span>
-                <span className={response.result === 'Pass' ? 'inline-flex items-center gap-1 text-xs font-bold text-success-700' : 'inline-flex items-center gap-1 text-xs font-bold text-danger-700'}>
-                  {response.result === 'Pass' ? <Check className="size-4" /> : <X className="size-4" />}
-                  {response.result}
-                </span>
-              </div>
+              <ReadOnlyInspectionResponseRow
+                key={item.id}
+                item={item}
+                result={response.result}
+                defect={response.defect}
+              />
             )
           })}
         </div>
       </Card>
-
-      {failed.length > 0 ? (
-        <section className="space-y-3" aria-labelledby="defect-summary-title">
-          <h2 id="defect-summary-title" className="text-lg font-bold text-slate-950">Defect summary</h2>
-          {failed.map((response) => {
-            const item = workspace.items.find((candidate) => candidate.id === response.checklistItemId)!
-            return (
-              <Card key={response.checklistItemId} className="overflow-hidden">
-                <div className="flex items-center justify-between gap-3 border-b border-danger-100 bg-danger-50 px-4 py-3">
-                  <p className="text-sm font-bold text-danger-700">{item.category}</p>
-                  <SeverityBadge severity={response.defect!.severity!} />
-                </div>
-                <div className="grid gap-4 p-4 sm:grid-cols-[1fr_8rem]">
-                  <div>
-                    <p className="text-sm leading-6 text-slate-700">{response.defect!.description}</p>
-                    <p className="mt-2 text-xs font-semibold text-slate-500">Evidence: {response.defect!.evidenceReference?.label}</p>
-                  </div>
-                  <EvidencePreview
-                    evidence={response.defect!.evidenceReference!}
-                    alt="Attached defect evidence"
-                    className="h-24 w-full rounded-lg object-cover sm:h-20"
-                  />
-                </div>
-              </Card>
-            )
-          })}
-        </section>
-      ) : null}
 
       <Card className="p-5">
         <h2 className="text-lg font-bold text-slate-950">Inspector signature</h2>

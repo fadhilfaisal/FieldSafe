@@ -19,6 +19,7 @@ import { LoginPage } from '../pages/auth/LoginPage'
 import { GatePage } from '../pages/gate/GatePage'
 import {
   InspectorEquipmentPage,
+  CompletedInspectionDetailPage,
   InspectorHistoryPage,
   InspectorHomePage,
   InspectorInspectionPage,
@@ -77,6 +78,7 @@ const fieldSafeRoutes: RouteObject[] = [
           { path: 'inspection/:id/review', element: <InspectionReviewPage /> },
           { path: 'inspection/:id/result', element: <InspectionResultPage /> },
           { path: 'history', element: <InspectorHistoryPage /> },
+          { path: 'history/:id', element: <CompletedInspectionDetailPage /> },
           { path: 'profile', element: <InspectorProfilePage /> },
         ],
       },

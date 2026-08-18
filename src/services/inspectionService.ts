@@ -14,8 +14,10 @@ import type {
 import {
   deriveEquipmentStatus,
   deriveEquipmentStatusFromSeverities,
+  getHighestDefectSeverity,
   isInspectionOverdue,
 } from '../domain/safety'
+import { createSupervisorReviewNotification } from '../domain/notifications'
 import { fieldSafeRepository } from '../repositories'
 import type { FieldSafeRepository } from '../repositories/fieldSafeRepository'
 
@@ -223,6 +225,17 @@ export class InspectionService {
           a.inspection.completedAt ?? '',
         ),
       )
+  }
+
+  async getCompletedInspectionDetail(
+    inspectionId: string,
+    inspectorId: string,
+  ) {
+    const workspace = await this.getWorkspace(inspectionId, inspectorId)
+    if (workspace.inspection.status !== 'Completed') {
+      throw new InspectionWorkflowError('Completed inspection not found.')
+    }
+    return workspace
   }
 
   async getWorkspace(
@@ -448,7 +461,11 @@ export class InspectionService {
         },
       ]
     })
-    const allDefects = (await this.repository.getDefects()).filter(
+    const [allDefectRecords, users] = await Promise.all([
+      this.repository.getDefects(),
+      this.repository.getUsers(),
+    ])
+    const allDefects = allDefectRecords.filter(
       (defect) => defect.equipmentId === workspace.equipment.id,
     )
     const equipment: Equipment = {
@@ -468,12 +485,32 @@ export class InspectionService {
       reviewedAt: null,
       reviewedByUserId: null,
     }
+    const notifications =
+      defects.length === 0
+        ? []
+        : users
+            .filter(
+              (candidate) =>
+                candidate.role === 'Supervisor' && candidate.isActive,
+            )
+            .map((supervisor) =>
+              createSupervisorReviewNotification({
+                supervisorId: supervisor.id,
+                inspection,
+                equipment,
+                checklist: workspace.checklist,
+                highestSeverity: getHighestDefectSeverity(
+                  defects.map((defect) => defect.severity),
+                ),
+              }),
+            )
 
     await this.repository.commitInspectionSubmission({
       inspection,
       responses,
       defects,
       equipment,
+      notifications,
     })
 
     return { inspection, equipment, defects }

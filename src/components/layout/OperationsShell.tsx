@@ -5,9 +5,11 @@ import {
 } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
+import { SupervisorNotificationProvider } from '../../notifications/SupervisorNotificationProvider'
 import { getInitials } from '../../utils/identity'
 import { cn } from '../../utils/cn'
 import { BrandMark } from './BrandMark'
+import { SupervisorNotificationCenter } from '../feedback/SupervisorNotificationCenter'
 
 export interface OperationsNavItem {
   label: string
@@ -30,7 +32,7 @@ export function OperationsShell({ role, navigation }: OperationsShellProps) {
     navigate('/login', { replace: true })
   }
 
-  return (
+  const shell = (
     <div className="min-h-dvh bg-slate-100 p-3 lg:p-5">
       <div className="shell-surface mx-auto grid min-h-[calc(100dvh-1.5rem)] max-w-[1600px] grid-cols-[5rem_1fr] overflow-hidden rounded-2xl lg:min-h-[calc(100dvh-2.5rem)] lg:grid-cols-[16rem_1fr]">
         <aside className="flex flex-col bg-navy-950 text-white">
@@ -80,6 +82,7 @@ export function OperationsShell({ role, navigation }: OperationsShellProps) {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-3">
+              {role === 'Supervisor' ? <SupervisorNotificationCenter /> : null}
               <div className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-left">
                 <span className="flex size-9 items-center justify-center rounded-full bg-brand-50 text-brand-700">
                   {user ? (
@@ -113,5 +116,13 @@ export function OperationsShell({ role, navigation }: OperationsShellProps) {
         </div>
       </div>
     </div>
+  )
+
+  return role === 'Supervisor' ? (
+    <SupervisorNotificationProvider userId={user?.id}>
+      {shell}
+    </SupervisorNotificationProvider>
+  ) : (
+    shell
   )
 }

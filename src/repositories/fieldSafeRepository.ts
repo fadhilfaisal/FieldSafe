@@ -10,6 +10,7 @@ import type {
   InspectorNotification,
   SimulatedConnectivityState,
   User,
+  UserNotification,
 } from '../domain/models'
 
 export interface InspectionSubmissionPersistence {
@@ -17,6 +18,7 @@ export interface InspectionSubmissionPersistence {
   responses: ChecklistResponse[]
   defects: Defect[]
   equipment: Equipment
+  notifications?: UserNotification[]
 }
 
 export interface DefectResolutionPersistence {
@@ -49,6 +51,19 @@ export interface FieldSafeRepository {
     userId: string,
     readAt: string,
   ): Promise<InspectorNotification[]>
+  getNotifications(userId: string): Promise<UserNotification[]>
+  saveNotification(
+    notification: UserNotification,
+  ): Promise<UserNotification>
+  markNotificationRead(
+    notificationId: string,
+    userId: string,
+    readAt: string,
+  ): Promise<UserNotification>
+  markAllNotificationsRead(
+    userId: string,
+    readAt: string,
+  ): Promise<UserNotification[]>
   getChecklists(): Promise<Checklist[]>
   getChecklistItems(checklistId?: string): Promise<ChecklistItem[]>
   getChecklistResponses(inspectionId?: string): Promise<ChecklistResponse[]>

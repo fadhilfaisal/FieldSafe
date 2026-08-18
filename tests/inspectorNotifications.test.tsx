@@ -346,10 +346,11 @@ describe('Inspector persistent notifications', () => {
     )
   })
 
-  it('does not expose the Inspector notification center to other personas or Gate', async () => {
+  it('keeps notification centers persona-scoped and excludes Manager and Gate', async () => {
     await renderAuthenticated('/supervisor', 'priya.sharma@fieldsafe.demo')
     await screen.findByRole('heading', { name: 'Supervisor Overview' })
-    expect(screen.queryByRole('button', { name: /Notifications/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Notifications/ })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Inspector notifications' })).toBeNull()
     cleanup()
 
     await renderAuthenticated('/manager', 'varun.mehta@fieldsafe.demo')
