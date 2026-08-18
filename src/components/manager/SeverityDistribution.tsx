@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router'
 import type { DefectSeverity } from '../../domain/models'
 
 interface SeverityDistributionProps {
   values: Record<DefectSeverity, number>
+  getSeverityDestination?: (severity: DefectSeverity) => string
 }
 
 const severities: Array<{
@@ -15,7 +17,11 @@ const severities: Array<{
   { severity: 'Critical', color: '#dc2626', dotClass: 'bg-danger-600' },
 ]
 
-export function SeverityDistribution({ values }: SeverityDistributionProps) {
+export function SeverityDistribution({
+  values,
+  getSeverityDestination,
+}: SeverityDistributionProps) {
+  const navigate = useNavigate()
   const [hoveredSeverity, setHoveredSeverity] =
     useState<DefectSeverity | null>(null)
   const [focusedSeverity, setFocusedSeverity] =
@@ -61,6 +67,7 @@ export function SeverityDistribution({ values }: SeverityDistributionProps) {
             const count = values[item.severity]
             const roundedPercentage = Math.round(item.percentage)
             const label = `${item.severity}. ${count} defects. ${roundedPercentage}% of reported defects.`
+            const destination = getSeverityDestination?.(item.severity)
             return (
               <circle
                 key={item.severity}
@@ -77,12 +84,22 @@ export function SeverityDistribution({ values }: SeverityDistributionProps) {
                 transform="rotate(-90 110 110)"
                 className="cursor-pointer transition-[stroke-width] focus-visible:outline-none"
                 tabIndex={0}
-                aria-label={label}
+                role={destination ? 'link' : undefined}
+                aria-label={destination ? `${label} View matching equipment.` : label}
                 data-severity-segment={item.severity}
+                data-severity-destination={destination}
                 onMouseEnter={() => setHoveredSeverity(item.severity)}
                 onMouseLeave={() => setHoveredSeverity(null)}
                 onFocus={() => setFocusedSeverity(item.severity)}
                 onBlur={() => setFocusedSeverity(null)}
+                onClick={() => {
+                  if (destination) void navigate(destination)
+                }}
+                onKeyDown={(event) => {
+                  if (!destination || (event.key !== 'Enter' && event.key !== ' ')) return
+                  event.preventDefault()
+                  void navigate(destination)
+                }}
               />
             )
           })}
@@ -115,12 +132,9 @@ export function SeverityDistribution({ values }: SeverityDistributionProps) {
         {segments.map((item) => {
           const count = values[item.severity]
           const percentage = Math.round(item.percentage)
-          return (
-            <div
-              key={item.severity}
-              className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-slate-200 px-3 py-2.5"
-              data-severity-legend-row={item.severity}
-            >
+          const destination = getSeverityDestination?.(item.severity)
+          const content = (
+            <>
               <span className={`size-2.5 rounded-full ${item.dotClass}`} aria-hidden="true" />
               <span className="min-w-0 text-sm font-bold text-slate-800">
                 {item.severity}
@@ -131,6 +145,30 @@ export function SeverityDistribution({ values }: SeverityDistributionProps) {
               <span className="min-w-12 whitespace-nowrap text-right text-sm font-medium tabular-nums text-slate-500">
                 {percentage}%
               </span>
+            </>
+          )
+          const className = 'grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-slate-200 px-3 py-2.5 transition-colors hover:border-brand-200 hover:bg-brand-50/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600'
+          return destination ? (
+            <Link
+              key={item.severity}
+              to={destination}
+              className={className}
+              aria-label={`View equipment with unresolved ${item.severity} defects`}
+              data-severity-legend-row={item.severity}
+              onMouseEnter={() => setHoveredSeverity(item.severity)}
+              onMouseLeave={() => setHoveredSeverity(null)}
+              onFocus={() => setFocusedSeverity(item.severity)}
+              onBlur={() => setFocusedSeverity(null)}
+            >
+              {content}
+            </Link>
+          ) : (
+            <div
+              key={item.severity}
+              className={className}
+              data-severity-legend-row={item.severity}
+            >
+              {content}
             </div>
           )
         })}

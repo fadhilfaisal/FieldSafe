@@ -117,6 +117,11 @@ export function InspectorHomePage() {
               <InspectionCard
                 key={item.inspection.id}
                 item={item}
+                to={
+                  item.inspection.status === 'Assigned'
+                    ? `/inspector/scan?inspection=${item.inspection.id}`
+                    : `/inspector/inspection/${item.inspection.id}`
+                }
                 busy={openingId === item.inspection.id}
                 onAction={() => void openInspection(item)}
               />

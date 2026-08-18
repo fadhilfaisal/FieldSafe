@@ -3,15 +3,21 @@ import { Link } from 'react-router'
 import type { SupervisorReviewListItem } from '../../services/supervisorService'
 import { formatDateTime } from '../../utils/format'
 import { Card } from '../common/Card'
+import { CardNavigationOverlay } from '../common/CardNavigationOverlay'
 import { SeverityBadge } from '../common/SeverityBadge'
 import { StatusBadge } from '../common/StatusBadge'
 import { ReviewStatusBadge } from './WorkflowBadges'
 
 export function ReviewCard({ review }: { review: SupervisorReviewListItem }) {
   const pending = review.inspection.reviewStatus !== 'Reviewed'
+  const destination = `/supervisor/reviews/${review.inspection.id}`
   return (
-    <Card className="overflow-hidden">
-      <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
+    <Card className="group relative overflow-hidden transition-colors hover:border-brand-200 hover:bg-brand-50/20">
+      <CardNavigationOverlay
+        to={destination}
+        label={`${pending ? 'Review' : 'View review'} for ${review.equipment.assetCode}`}
+      />
+      <div className="pointer-events-none relative z-20 flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-[0.12em] text-brand-700">
@@ -56,8 +62,8 @@ export function ReviewCard({ review }: { review: SupervisorReviewListItem }) {
         <div className="flex items-center gap-3 lg:pl-4">
           <StatusBadge status={review.equipment.status} />
           <Link
-            to={`/supervisor/reviews/${review.inspection.id}`}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-600"
+            to={destination}
+            className="pointer-events-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-600"
           >
             {pending ? 'Review' : 'View Review'}
             <ArrowRight aria-hidden="true" className="size-4" />

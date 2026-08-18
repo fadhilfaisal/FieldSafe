@@ -125,10 +125,15 @@ export function ManagerHomePage() {
               <h2 className="mt-1 text-xl font-bold text-slate-950">Equipment Status</h2>
               <div className="mt-5 space-y-4">
                 {(['Fit', 'Restricted', 'Out of Service'] as const).map((status) => (
-                  <div key={status} className="flex items-center justify-between rounded-xl border border-slate-200 p-4">
+                  <Link
+                    key={status}
+                    to={`/manager/equipment?state=${encodeURIComponent(status)}`}
+                    aria-label={`View ${status} equipment`}
+                    className="flex items-center justify-between rounded-xl border border-slate-200 p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                  >
                     <StatusBadge status={status} />
                     <span className="text-2xl font-bold text-slate-950">{overview.equipmentStatusCounts[status]}</span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </Card>

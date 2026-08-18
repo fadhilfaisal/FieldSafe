@@ -2,9 +2,11 @@ import { AlertTriangle, CalendarClock, MapPin, Play, RotateCcw } from 'lucide-re
 import type { InspectorQueueItem } from '../../services/inspectionService'
 import { Button } from '../common/Button'
 import { Card } from '../common/Card'
+import { CardNavigationOverlay } from '../common/CardNavigationOverlay'
 
 interface InspectionCardProps {
   item: InspectorQueueItem
+  to: string
   onAction(): void
   busy?: boolean
 }
@@ -20,14 +22,19 @@ function formatDueDate(value: string) {
 
 export function InspectionCard({
   item,
+  to,
   onAction,
   busy = false,
 }: InspectionCardProps) {
   const inProgress = item.inspection.status === 'In Progress'
 
   return (
-    <Card className="p-4 sm:p-5">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+    <Card className="group relative p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/20 sm:p-5">
+      <CardNavigationOverlay
+        to={to}
+        label={`${inProgress ? 'Continue' : 'Start'} inspection for ${item.equipment.assetCode}`}
+      />
+      <div className="pointer-events-none relative z-20 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-bold text-slate-950">
@@ -63,7 +70,7 @@ export function InspectionCard({
         <Button
           onClick={onAction}
           disabled={busy}
-          className="w-full shrink-0 sm:w-auto"
+          className="pointer-events-auto w-full shrink-0 sm:w-auto"
         >
           {inProgress ? (
             <RotateCcw aria-hidden="true" className="size-4" />

@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import type { SupervisorReviewListItem } from '../../services/supervisorService'
 import { formatDateTime } from '../../utils/format'
 import { Card } from '../common/Card'
+import { CardNavigationOverlay } from '../common/CardNavigationOverlay'
 import { StatusBadge } from '../common/StatusBadge'
 
 export function CompletedInspectionCard({
@@ -10,9 +11,14 @@ export function CompletedInspectionCard({
 }: {
   item: SupervisorReviewListItem
 }) {
+  const destination = `/supervisor/reviews/${item.inspection.id}`
   return (
-    <Card className="p-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <Card className="group relative p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/20">
+      <CardNavigationOverlay
+        to={destination}
+        label={`Open completed inspection ${item.inspection.id}`}
+      />
+      <div className="pointer-events-none relative z-20 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-[0.12em] text-brand-700">
@@ -39,8 +45,8 @@ export function CompletedInspectionCard({
           </div>
         </div>
         <Link
-          to={`/supervisor/reviews/${item.inspection.id}`}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 hover:bg-slate-50"
+          to={destination}
+          className="pointer-events-auto inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 hover:bg-slate-50"
           aria-label={`View completed inspection ${item.inspection.id}`}
         >
           View

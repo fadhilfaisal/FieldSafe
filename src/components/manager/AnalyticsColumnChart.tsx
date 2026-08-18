@@ -16,6 +16,7 @@ interface AnalyticsColumnChartProps {
   data: AnalyticsColumnDatum[]
   ariaLabel: string
   tone?: 'brand' | 'danger'
+  reserveValueLabelHeadroom?: boolean
 }
 
 const barTone = {
@@ -27,6 +28,7 @@ export function AnalyticsColumnChart({
   data,
   ariaLabel,
   tone = 'brand',
+  reserveValueLabelHeadroom = false,
 }: AnalyticsColumnChartProps) {
   const tooltipId = useId()
   const plotRef = useRef<HTMLDivElement>(null)
@@ -39,6 +41,8 @@ export function AnalyticsColumnChart({
   const activeItem = activeIndex >= 0 ? data[activeIndex] : null
   const ticks = createRoundedIntegerTicks(
     Math.max(0, ...data.map((item) => item.value)),
+    6,
+    reserveValueLabelHeadroom,
   )
   const maximum = ticks.at(-1) ?? 1
 
@@ -82,6 +86,7 @@ export function AnalyticsColumnChart({
       aria-label={ariaLabel}
       className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-3"
       data-testid={`${tone}-column-chart`}
+      data-value-label-headroom={reserveValueLabelHeadroom ? 'reserved' : 'default'}
     >
       <div className="flex h-64 flex-col justify-between pb-1 pt-20 text-right text-[11px] font-medium tabular-nums text-slate-500" aria-hidden="true">
         {ticks.slice().reverse().map((tick) => (
@@ -146,6 +151,7 @@ export function AnalyticsColumnChart({
                   <span
                     className="absolute left-1/2 -translate-x-1/2 text-xs font-bold text-slate-800"
                     style={{ bottom: `${Math.min(92, height + 3)}%` }}
+                    data-column-value-label={item.value}
                   >
                     {item.value}
                   </span>

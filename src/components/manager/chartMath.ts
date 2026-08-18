@@ -3,10 +3,14 @@ import type { DefectVolumePeriod } from '../../services/managerService'
 export function createRoundedIntegerTicks(
   maximumValue: number,
   targetTickCount = 6,
+  reserveValueLabelHeadroom = false,
 ) {
   if (maximumValue <= 0) return [0, 1]
 
-  const roughStep = maximumValue / Math.max(1, targetTickCount - 1)
+  const scaledMaximum = reserveValueLabelHeadroom
+    ? Math.max(maximumValue + 1, Math.ceil(maximumValue * 1.15))
+    : maximumValue
+  const roughStep = scaledMaximum / Math.max(1, targetTickCount - 1)
   const magnitude = 10 ** Math.floor(Math.log10(roughStep))
   const normalizedStep = roughStep / magnitude
   const niceStep =
@@ -18,7 +22,7 @@ export function createRoundedIntegerTicks(
           ? 5
           : 10
   const step = Math.max(1, niceStep * magnitude)
-  const axisMaximum = Math.ceil(maximumValue / step) * step
+  const axisMaximum = Math.ceil(scaledMaximum / step) * step
 
   return Array.from(
     { length: Math.round(axisMaximum / step) + 1 },

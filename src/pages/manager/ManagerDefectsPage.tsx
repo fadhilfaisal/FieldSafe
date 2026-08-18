@@ -70,6 +70,7 @@ export function ManagerDefectsPage() {
                   <AnalyticsColumnChart
                     ariaLabel="Reported defect volume by month"
                     tone="danger"
+                    reserveValueLabelHeadroom
                     data={volumeTrend.map((period) => ({
                       key: period.key,
                       label: period.label,
@@ -91,7 +92,12 @@ export function ManagerDefectsPage() {
                 <EmptyState icon={ShieldAlert} title="No defect severity data" description="No defects have been recorded in the operational dataset." />
               ) : (
                 <div className="mt-6">
-                  <SeverityDistribution values={analytics.severityBreakdown} />
+                  <SeverityDistribution
+                    values={analytics.severityBreakdown}
+                    getSeverityDestination={(severity) =>
+                      `/manager/equipment?severity=${encodeURIComponent(severity)}`
+                    }
+                  />
                   <div className="mt-6 border-t border-slate-200 pt-5">
                     <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Defect lifecycle</p>
                     <div className="mt-3 grid grid-cols-3 gap-2">
