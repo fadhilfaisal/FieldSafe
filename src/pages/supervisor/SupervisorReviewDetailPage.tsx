@@ -1,11 +1,9 @@
 import {
   AlertTriangle,
   ArrowLeft,
-  Check,
   CheckCircle2,
   ClipboardCheck,
   PenLine,
-  X,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
@@ -15,12 +13,10 @@ import { Card } from '../../components/common/Card'
 import { ConfirmationDialog } from '../../components/common/ConfirmationDialog'
 import { EmptyState } from '../../components/common/EmptyState'
 import { PageHeader } from '../../components/common/PageHeader'
-import { SeverityBadge } from '../../components/common/SeverityBadge'
 import { StatusBadge } from '../../components/common/StatusBadge'
 import { LoadingState } from '../../components/feedback/LoadingState'
-import { EvidencePreview } from '../../components/inspection/EvidencePreview'
-import { CorrectiveActionForm } from '../../components/supervisor/CorrectiveActionForm'
-import { DefectStatusBadge, ReviewStatusBadge } from '../../components/supervisor/WorkflowBadges'
+import { SupervisorReviewResponseRow } from '../../components/supervisor/SupervisorReviewResponseRow'
+import { ReviewStatusBadge } from '../../components/supervisor/WorkflowBadges'
 import type { User } from '../../domain/models'
 import {
   SupervisorReviewConfirmationRequired,
@@ -206,89 +202,37 @@ export function SupervisorReviewDetailPage() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="border-b border-slate-200 bg-slate-50 px-5 py-4"><h2 className="font-bold text-slate-950">Checklist responses</h2></div>
+        <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+          <h2 className="font-bold text-slate-950">Checklist responses</h2>
+          {!cleanPass ? (
+            <p className="mt-1 text-xs text-slate-500">
+              Failed responses include the Inspector observation, evidence, and remediation state.
+            </p>
+          ) : null}
+        </div>
         <div className="divide-y divide-slate-100">
-          {review.responses.map(({ item, response }) => (
-            <div key={response.id} className="flex items-start justify-between gap-4 px-5 py-3">
-              <div><p className="text-sm font-bold text-slate-800">{item.sequence}. {item.category}</p><p className="mt-1 text-xs text-slate-500">{item.prompt}</p></div>
-              <span className={response.result === 'Pass' ? 'inline-flex items-center gap-1 text-xs font-bold text-success-700' : 'inline-flex items-center gap-1 text-xs font-bold text-danger-700'}>
-                {response.result === 'Pass' ? <Check aria-hidden="true" className="size-4" /> : <X aria-hidden="true" className="size-4" />}
-                {response.result}
-              </span>
-            </div>
-          ))}
+          {review.responses.map((entry) => {
+            const defectId = entry.defect?.id
+            const existingAction = defectId
+              ? review.actions.find((action) => action.defectId === defectId)
+              : undefined
+            return (
+              <SupervisorReviewResponseRow
+                key={entry.response.id}
+                reviewId={review.inspection.id}
+                entry={entry}
+                action={existingAction}
+                technicians={technicians}
+                submitting={creatingFor === defectId}
+                error={creatingFor === defectId ? mutationError : ''}
+                onCreateAction={(input) => {
+                  if (defectId) void createAction(defectId, input)
+                }}
+              />
+            )
+          })}
         </div>
       </Card>
-
-      {!cleanPass ? <section aria-labelledby="review-defects-title" className="space-y-4">
-        <h2 id="review-defects-title" className="text-xl font-bold text-slate-950">Defect Assessment</h2>
-        {failed.length === 0 ? (
-          <Card><EmptyState icon={CheckCircle2} title="No defects recorded" description="Every checklist item passed during this inspection." /></Card>
-        ) : null}
-        {failed.map(({ item, response, defect }) => {
-          if (!defect) {
-            return (
-              <Card key={response.id}>
-                <EmptyState
-                  icon={AlertTriangle}
-                  title="Defect details unavailable"
-                  description={`${item.category} failed, but its related defect record could not be resolved. No corrective action can be created from this record.`}
-                />
-              </Card>
-            )
-          }
-          const existingAction = review.actions.find((action) => action.defectId === defect.id)
-          return (
-            <Card key={defect.id} className="overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-danger-100 bg-danger-50 px-5 py-4">
-                <div><p className="text-xs font-bold uppercase tracking-[0.12em] text-danger-700">Failed item</p><h3 className="mt-1 font-bold text-slate-950">{item.category}</h3></div>
-                <SeverityBadge severity={defect.severity} />
-              </div>
-              <div className="grid gap-5 p-5 lg:grid-cols-[1fr_14rem]">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">{item.prompt}</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{defect.description}</p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span>Reported {formatDateTime(defect.reportedAt)}</span>
-                    <DefectStatusBadge status={defect.status} />
-                  </div>
-                </div>
-                {defect.evidenceReference ? <EvidencePreview evidence={defect.evidenceReference} alt={`Evidence for ${item.category}`} className="h-36 w-full rounded-lg object-cover" /> : <div className="flex h-36 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-500">No evidence attached</div>}
-              </div>
-              <div className="border-t border-slate-200 bg-slate-50 p-5">
-                {defect.status === 'Resolved' ? (
-                  <div className="flex items-start gap-3 rounded-lg border border-success-100 bg-success-50 p-4 text-success-700">
-                    <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold">Defect remediation verified</p>
-                      <p className="mt-1 text-xs leading-5">
-                        Resolved {formatDateTime(defect.resolvedAt)}. No new corrective action is required.
-                      </p>
-                    </div>
-                  </div>
-                ) : existingAction ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div><p className="text-sm font-bold text-slate-900">Corrective action created</p><p className="mt-1 text-xs text-slate-500">{existingAction.title}</p></div>
-                    <Link to={`/supervisor/actions/${existingAction.id}`} className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 hover:bg-slate-50">View action</Link>
-                  </div>
-                ) : (
-                  <div>
-                    <h4 className="text-base font-bold text-slate-950">Create Corrective Action</h4>
-                    <p className="mt-1 mb-4 text-sm text-slate-600">Assign corrective work without changing the unresolved defect or equipment safety state.</p>
-                    <CorrectiveActionForm
-                      idPrefix={defect.id}
-                      technicians={technicians}
-                      submitting={creatingFor === defect.id}
-                      error={creatingFor === defect.id ? mutationError : ''}
-                      onSubmit={(input) => void createAction(defect.id, input)}
-                    />
-                  </div>
-                )}
-              </div>
-            </Card>
-          )
-        })}
-      </section> : null}
 
       {!cleanPass ? <ConfirmationDialog
         open={confirmingReview}

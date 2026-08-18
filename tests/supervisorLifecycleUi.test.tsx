@@ -107,8 +107,11 @@ describe('Supervisor lifecycle UI', () => {
       (await fieldSafeRepository.getInspectionById('ASG-001'))?.reviewStatus,
     ).toBe('Reviewed')
     expect(
-      screen.getByRole('heading', { name: 'Create Corrective Action' }),
-    ).toBeTruthy()
+      screen.getAllByRole('heading', { name: 'Create Corrective Action' }),
+    ).toHaveLength(1)
+    expect(
+      screen.queryByRole('heading', { name: 'Defect Assessment' }),
+    ).toBeNull()
   })
 
   it('requires confirmation before verifying completed remediation', async () => {

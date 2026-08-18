@@ -1,6 +1,6 @@
 import { ArrowLeft, CheckCircle2, ShieldAlert, Wrench } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useLocation, useParams } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { Button } from '../../components/common/Button'
 import { Card } from '../../components/common/Card'
@@ -25,8 +25,13 @@ const actionStatusHelp: Record<CorrectiveActionStatus, string> = {
   Done: 'Corrective work is complete; an unresolved originating defect still requires Supervisor verification.',
 }
 
+interface ActionDetailNavigationState {
+  fromReview?: string
+}
+
 export function SupervisorActionDetailPage() {
   const { id } = useParams()
+  const location = useLocation()
   const { user } = useAuth()
   const [item, setItem] = useState<SupervisorActionListItem | null>(null)
   const [status, setStatus] = useState<CorrectiveActionStatus>('Open')
@@ -101,9 +106,19 @@ export function SupervisorActionDetailPage() {
   if (error && !item) return <Card><EmptyState icon={Wrench} title="Corrective action not found" description={error} /></Card>
   if (!item) return null
 
+  const expectedReviewPath = `/supervisor/reviews/${item.inspection.id}`
+  const navigationState = location.state as ActionDetailNavigationState | null
+  const cameFromReview = navigationState?.fromReview === expectedReviewPath
+  const backTarget = cameFromReview
+    ? expectedReviewPath
+    : '/supervisor/actions'
+
   return (
     <div className="space-y-6">
-      <Link to="/supervisor/actions" className="inline-flex min-h-10 items-center gap-2 text-sm font-bold text-brand-700 hover:text-brand-600"><ArrowLeft aria-hidden="true" className="size-4" />Back to corrective actions</Link>
+      <Link to={backTarget} className="inline-flex min-h-10 items-center gap-2 text-sm font-bold text-brand-700 hover:text-brand-600">
+        <ArrowLeft aria-hidden="true" className="size-4" />
+        {cameFromReview ? 'Back to inspection review' : 'Back to corrective actions'}
+      </Link>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <PageHeader eyebrow={`${item.action.id} · ${item.equipment.assetCode}`} title="Corrective Action Detail" description={item.action.title} />
         <div className="flex flex-wrap items-center gap-2"><ActionStatusBadge status={item.action.status} overdue={item.overdue} />{item.overdue ? <OverdueBadge /> : null}<SeverityBadge severity={item.defect.severity} /></div>

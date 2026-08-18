@@ -17,7 +17,9 @@ export function ReviewCard({ review }: { review: SupervisorReviewListItem }) {
             <span className="text-xs font-bold uppercase tracking-[0.12em] text-brand-700">
               {review.equipment.assetCode}
             </span>
-            <ReviewStatusBadge status={review.inspection.reviewStatus ?? 'Pending Review'} />
+            {!pending ? (
+              <ReviewStatusBadge status="Reviewed" />
+            ) : null}
             {review.inspection.result ? (
               <StatusBadge status={review.inspection.result} />
             ) : (
