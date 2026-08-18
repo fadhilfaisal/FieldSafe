@@ -89,14 +89,14 @@ describe('Manager read-only views', () => {
     expect(screen.queryByRole('button', { name: /save|create|update|resolve/i })).toBeNull()
 
     const equipmentLink = await screen.findByRole('link', { name: 'View TRK-001' })
-    expect(equipmentLink.closest('tr')?.className).toContain(
+    expect(equipmentLink.className).toContain(
       'border-l-danger-600',
     )
     await user.click(equipmentLink)
     await screen.findByRole('heading', { name: 'Volvo FMX Dump Truck' })
 
     expect(router.state.location.pathname).toBe('/manager/equipment/EQ-001')
-    expect(screen.getByRole('heading', { name: 'Unresolved Defects' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Current Risk & Remediation' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Recent Inspection History' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /save|create|update|resolve/i })).toBeNull()
     expect(screen.queryByRole('form')).toBeNull()

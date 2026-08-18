@@ -81,4 +81,178 @@
       linear-gradient(90deg, rgb(15 98 201 / 0.025) 1px, transparent 1px);
     background-size: 24px 24px;
   }
+
+  .fleet-status-board {
+    container-name: fleet-status;
+    container-type: inline-size;
+    overflow: hidden;
+  }
+
+  .fleet-status-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 3.5rem;
+    grid-template-areas:
+      "equipment affordance"
+      "state affordance"
+      "risk affordance"
+      "inspection affordance";
+    align-items: center;
+    min-width: 0;
+  }
+
+  .fleet-status-header {
+    display: none;
+  }
+
+  .fleet-status-row {
+    row-gap: 0.7rem;
+    padding-block: 0.9rem;
+    text-decoration: none;
+  }
+
+  .fleet-status-equipment,
+  .fleet-status-type,
+  .fleet-status-site,
+  .fleet-status-state,
+  .fleet-status-risk,
+  .fleet-status-inspection {
+    min-width: 0;
+    padding-inline: 1rem;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  .fleet-status-equipment {
+    grid-area: equipment;
+  }
+
+  .fleet-status-equipment-context {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .fleet-status-equipment-context > span:not([aria-hidden]) {
+    white-space: nowrap;
+  }
+
+  .fleet-status-type {
+    grid-area: type;
+    display: none;
+    white-space: nowrap;
+  }
+
+  .fleet-status-site {
+    grid-area: site;
+    display: none;
+    white-space: nowrap;
+  }
+
+  .fleet-status-state {
+    grid-area: state;
+  }
+
+  .fleet-status-risk {
+    grid-area: risk;
+  }
+
+  .fleet-status-inspection {
+    grid-area: inspection;
+  }
+
+  .fleet-status-affordance {
+    grid-area: affordance;
+    min-width: 3.5rem;
+    align-self: stretch;
+  }
+
+  .fleet-status-inline-label {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #64748b;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1rem;
+    text-transform: uppercase;
+  }
+
+  @container fleet-status (min-width: 34rem) {
+    .fleet-status-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(9rem, 1fr) 3.5rem;
+      grid-template-areas:
+        "equipment equipment affordance"
+        "state risk affordance"
+        "inspection inspection affordance";
+    }
+  }
+
+  @container fleet-status (min-width: 48rem) {
+    .fleet-status-grid {
+      grid-template-columns:
+        minmax(15rem, 1.8fr)
+        minmax(8.25rem, 0.9fr)
+        minmax(10.5rem, 1.1fr)
+        minmax(9.25rem, 0.95fr)
+        3.5rem;
+      grid-template-areas: "equipment state risk inspection affordance";
+      row-gap: 0;
+    }
+
+    .fleet-status-header {
+      display: grid;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+      color: #64748b;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      line-height: 1rem;
+      text-transform: uppercase;
+    }
+
+    .fleet-status-header > * {
+      padding-block: 0.75rem;
+    }
+
+    .fleet-status-row {
+      min-height: 5.25rem;
+      padding-block: 0;
+    }
+
+    .fleet-status-inline-label {
+      display: none;
+    }
+
+    .fleet-status-state,
+    .fleet-status-risk,
+    .fleet-status-inspection {
+      white-space: nowrap;
+    }
+  }
+
+  @container fleet-status (min-width: 72rem) {
+    .fleet-status-grid {
+      grid-template-columns:
+        minmax(15rem, 1.65fr)
+        minmax(5.5rem, 0.6fr)
+        minmax(7.5rem, 0.8fr)
+        minmax(8.5rem, 0.95fr)
+        minmax(10rem, 1.05fr)
+        minmax(9.25rem, 0.95fr)
+        3.5rem;
+      grid-template-areas:
+        "equipment type site state risk inspection affordance";
+    }
+
+    .fleet-status-equipment-context {
+      display: none;
+    }
+
+    .fleet-status-type,
+    .fleet-status-site {
+      display: block;
+    }
+  }
 }
