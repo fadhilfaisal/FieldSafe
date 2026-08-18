@@ -1,6 +1,6 @@
-import { CheckCircle2, ClipboardCheck, Clock3, ListChecks } from 'lucide-react'
+import { ClipboardCheck, Clock3, ListChecks } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { Card } from '../../components/common/Card'
 import { EmptyState } from '../../components/common/EmptyState'
@@ -15,7 +15,6 @@ import {
 export function InspectorHomePage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
   const [queue, setQueue] = useState<InspectorQueueItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -58,15 +57,6 @@ export function InspectorHomePage() {
 
   return (
     <div className="space-y-6">
-      {(location.state as { demoDataReset?: boolean } | null)?.demoDataReset ? (
-        <div
-          className="flex items-center gap-3 rounded-xl border border-success-100 bg-success-50 p-4 text-sm font-semibold text-success-700"
-          role="status"
-        >
-          <CheckCircle2 aria-hidden="true" className="size-5 shrink-0" />
-          Demo data restored successfully.
-        </div>
-      ) : null}
       <PageHeader
         eyebrow="Inspector workspace"
         title={`Good day, ${user?.name.split(' ')[0] ?? 'Inspector'}`}

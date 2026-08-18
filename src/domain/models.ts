@@ -52,6 +52,22 @@ export type InspectionReviewStatus = 'Pending Review' | 'Reviewed'
 export type InspectionSyncStatus = 'SYNCED' | 'PENDING_SYNC'
 export type SimulatedConnectivityState = 'ONLINE' | 'OFFLINE'
 
+export type InspectorNotificationType =
+  | 'NEW_ASSIGNMENT'
+  | 'OFFLINE_SYNC_COMPLETED'
+
+export interface InspectorNotification {
+  id: EntityId
+  userId: EntityId
+  type: InspectorNotificationType
+  title: string
+  message: string
+  createdAt: IsoDateTime
+  readAt: IsoDateTime | null
+  targetRoute: string | null
+  inspectionId: EntityId | null
+}
+
 export interface SignaturePoint {
   x: number
   y: number
@@ -161,4 +177,5 @@ export interface OperationalData {
   defects: Defect[]
   correctiveActions: CorrectiveAction[]
   inspectionDrafts: InspectionDraft[]
+  inspectorNotifications: InspectorNotification[]
 }

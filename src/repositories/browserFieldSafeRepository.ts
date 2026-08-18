@@ -1,6 +1,7 @@
 import {
   createFieldSafeSeedData,
   createSeedAssignedInspections,
+  createSeedInspectorNotifications,
 } from '../data/seed/fieldSafeSeed'
 import { normalizeEvidenceReference } from '../domain/evidence'
 import type {
@@ -12,6 +13,7 @@ import type {
   Equipment,
   Inspection,
   InspectionDraft,
+  InspectorNotification,
   OperationalData,
   SimulatedConnectivityState,
   User,
@@ -23,7 +25,7 @@ import type {
   InspectionSubmissionPersistence,
 } from './fieldSafeRepository'
 
-export const OPERATIONAL_DATA_SCHEMA_VERSION = 5 as const
+export const OPERATIONAL_DATA_SCHEMA_VERSION = 6 as const
 
 export interface PersistedOperationalData {
   schemaVersion: number
@@ -72,9 +74,11 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
 
     if (persisted.schemaVersion === 1) {
       this.writeData(
-        this.migrateVersionFour(
-          this.migrateVersionThree(
-            this.migrateVersionTwo(this.migrateVersionOne(persisted.data)),
+        this.migrateVersionFive(
+          this.migrateVersionFour(
+            this.migrateVersionThree(
+              this.migrateVersionTwo(this.migrateVersionOne(persisted.data)),
+            ),
           ),
         ),
       )
@@ -83,8 +87,10 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
 
     if (persisted.schemaVersion === 2) {
       this.writeData(
-        this.migrateVersionFour(
-          this.migrateVersionThree(this.migrateVersionTwo(persisted.data)),
+        this.migrateVersionFive(
+          this.migrateVersionFour(
+            this.migrateVersionThree(this.migrateVersionTwo(persisted.data)),
+          ),
         ),
       )
       return
@@ -92,13 +98,22 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
 
     if (persisted.schemaVersion === 3) {
       this.writeData(
-        this.migrateVersionFour(this.migrateVersionThree(persisted.data)),
+        this.migrateVersionFive(
+          this.migrateVersionFour(this.migrateVersionThree(persisted.data)),
+        ),
       )
       return
     }
 
     if (persisted.schemaVersion === 4) {
-      this.writeData(this.migrateVersionFour(persisted.data))
+      this.writeData(
+        this.migrateVersionFive(this.migrateVersionFour(persisted.data)),
+      )
+      return
+    }
+
+    if (persisted.schemaVersion === 5) {
+      this.writeData(this.migrateVersionFive(persisted.data))
       return
     }
 
@@ -163,6 +178,71 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
 
     if (synchronized.length > 0) this.writeData(data)
     return clone(synchronized)
+  }
+
+  async getInspectorNotifications(
+    userId: string,
+  ): Promise<InspectorNotification[]> {
+    return clone(
+      (await this.readData()).inspectorNotifications.filter(
+        (notification) => notification.userId === userId,
+      ),
+    )
+  }
+
+  async saveInspectorNotification(
+    notification: InspectorNotification,
+  ): Promise<InspectorNotification> {
+    const data = await this.readData()
+    const index = data.inspectorNotifications.findIndex(
+      (item) => item.id === notification.id,
+    )
+
+    if (index === -1) data.inspectorNotifications.push(clone(notification))
+    else data.inspectorNotifications[index] = clone(notification)
+
+    this.writeData(data)
+    return clone(notification)
+  }
+
+  async markInspectorNotificationRead(
+    notificationId: string,
+    userId: string,
+    readAt: string,
+  ): Promise<InspectorNotification> {
+    const data = await this.readData()
+    const index = data.inspectorNotifications.findIndex(
+      (item) => item.id === notificationId && item.userId === userId,
+    )
+    if (index === -1) {
+      throw new Error('Inspector notification not found.')
+    }
+
+    data.inspectorNotifications[index] = {
+      ...data.inspectorNotifications[index],
+      readAt: data.inspectorNotifications[index].readAt ?? readAt,
+    }
+    this.writeData(data)
+    return clone(data.inspectorNotifications[index])
+  }
+
+  async markAllInspectorNotificationsRead(
+    userId: string,
+    readAt: string,
+  ): Promise<InspectorNotification[]> {
+    const data = await this.readData()
+    data.inspectorNotifications = data.inspectorNotifications.map(
+      (notification) =>
+        notification.userId === userId && notification.readAt === null
+          ? { ...notification, readAt }
+          : notification,
+    )
+    this.writeData(data)
+    return clone(
+      data.inspectorNotifications.filter(
+        (notification) => notification.userId === userId,
+      ),
+    )
   }
 
   async getChecklists(): Promise<Checklist[]> {
@@ -489,6 +569,19 @@ export class BrowserFieldSafeRepository implements FieldSafeRepository {
         resolvedByUserId: legacy.resolvedByUserId ?? null,
       }
     })
+    return migrated
+  }
+
+  private migrateVersionFive(data: OperationalData): OperationalData {
+    const migrated = clone(data)
+    const legacy = migrated as OperationalData & {
+      inspectorNotifications?: InspectorNotification[]
+    }
+    legacy.inspectorNotifications = createSeedInspectorNotifications(
+      migrated.inspections,
+      migrated.equipment,
+      migrated.checklists,
+    )
     return migrated
   }
 }

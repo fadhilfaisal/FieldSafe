@@ -1,5 +1,5 @@
 import { AlertCircle, ArrowRight, ClipboardList } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { Button } from '../../components/common/Button'
@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/common/EmptyState'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { ChecklistItemCard } from '../../components/inspection/ChecklistItemCard'
 import { InspectionProgress } from '../../components/inspection/InspectionProgress'
+import { StickyInspectionContext } from '../../components/inspection/StickyInspectionContext'
 import type { DraftChecklistResponse, DraftDefect } from '../../domain/models'
 import { useInspectionWorkspace } from '../../hooks/useInspectionWorkspace'
 import {
@@ -23,6 +24,7 @@ export function InspectionChecklistPage() {
   const { workspace, loading, error, reload } = useInspectionWorkspace(id, user?.id)
   const [showValidation, setShowValidation] = useState(false)
   const [mutationError, setMutationError] = useState('')
+  const summaryRef = useRef<HTMLDivElement>(null)
 
   const validation = useMemo(
     () => validateInspectionDraft(workspace?.items ?? [], workspace?.draft ?? null),
@@ -83,19 +85,30 @@ export function InspectionChecklistPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 pb-4" data-testid="checklist-safe-area">
-      <Card className="p-4 sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{workspace.equipment.assetCode} · {workspace.equipment.name}</p>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">{workspace.checklist.name}</h1>
-            <p className="mt-1 text-sm text-slate-500">{workspace.equipment.site}</p>
+      <div ref={summaryRef} data-testid="inspection-main-summary">
+        <Card className="p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{workspace.equipment.assetCode} · {workspace.equipment.name}</p>
+              <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">{workspace.checklist.name}</h1>
+              <p className="mt-1 text-sm text-slate-500">{workspace.equipment.site}</p>
+            </div>
+            <span className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700">In Progress</span>
           </div>
-          <span className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700">In Progress</span>
-        </div>
-        <div className="mt-5">
-          <InspectionProgress completed={completed} total={workspace.items.length} />
-        </div>
-      </Card>
+          <div className="mt-5">
+            <InspectionProgress completed={completed} total={workspace.items.length} />
+          </div>
+        </Card>
+      </div>
+
+      <StickyInspectionContext
+        summaryRef={summaryRef}
+        assetCode={workspace.equipment.assetCode}
+        equipmentName={workspace.equipment.name}
+        checklistName={workspace.checklist.name}
+        completed={completed}
+        total={workspace.items.length}
+      />
 
       {showValidation && !validation.isChecklistComplete ? (
         <div className="flex items-start gap-3 rounded-xl border border-danger-100 bg-danger-50 p-4 text-sm text-danger-700" role="alert">

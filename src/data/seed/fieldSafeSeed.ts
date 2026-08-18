@@ -11,6 +11,7 @@ import type {
   Equipment,
   EquipmentType,
   Inspection,
+  InspectorNotification,
   OperationalData,
   User,
 } from '../../domain/models'
@@ -250,6 +251,51 @@ export function createSeedAssignedInspections(
   })
 }
 
+function formatNotificationDueAt(value: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  }).format(new Date(value))
+}
+
+export function createSeedInspectorNotifications(
+  inspections: Inspection[],
+  equipment: Equipment[],
+  availableChecklists: Checklist[],
+): InspectorNotification[] {
+  return inspections
+    .filter((inspection) => inspection.status !== 'Completed')
+    .map((inspection) => {
+      const assignedEquipment = equipment.find(
+        (item) => item.id === inspection.equipmentId,
+      )
+      const checklist = availableChecklists.find(
+        (item) => item.id === inspection.checklistId,
+      )
+      if (!assignedEquipment || !checklist) {
+        throw new Error(
+          `Cannot create an assignment notification for ${inspection.id}.`,
+        )
+      }
+
+      return {
+        id: `NTF-ASSIGNMENT-${inspection.id}`,
+        userId: inspection.inspectorId,
+        type: 'NEW_ASSIGNMENT',
+        title: 'New inspection assigned',
+        message: `${assignedEquipment.assetCode} · ${checklist.name} · Due ${formatNotificationDueAt(inspection.dueAt)}`,
+        createdAt: inspection.assignedAt,
+        readAt: null,
+        targetRoute: `/inspector/scan?inspection=${inspection.id}`,
+        inspectionId: inspection.id,
+      } satisfies InspectorNotification
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
 export function createFieldSafeSeedData(): OperationalData {
   const checklistItems = createChecklistItems()
   const equipment: Equipment[] = equipmentDefinitions.map((definition, index) => ({
@@ -383,5 +429,10 @@ export function createFieldSafeSeedData(): OperationalData {
     defects,
     correctiveActions,
     inspectionDrafts: [],
+    inspectorNotifications: createSeedInspectorNotifications(
+      inspections,
+      equipment,
+      checklists,
+    ),
   }
 }

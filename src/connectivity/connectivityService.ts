@@ -1,6 +1,9 @@
 import type { SimulatedConnectivityState } from '../domain/models'
 import { fieldSafeRepository } from '../repositories'
 import type { FieldSafeRepository } from '../repositories/fieldSafeRepository'
+import {
+  InspectorNotificationService,
+} from '../services/inspectorNotificationService'
 
 type Delay = (milliseconds: number) => Promise<void>
 
@@ -9,12 +12,23 @@ const wait: Delay = (milliseconds) =>
 
 export class SimulatedConnectivityService {
   private activeSynchronization: Promise<number> | null = null
+  private readonly notifications: Pick<
+    InspectorNotificationService,
+    'recordOfflineSyncCompleted'
+  >
 
   constructor(
     private readonly repository: FieldSafeRepository,
     private readonly delay: Delay = wait,
     private readonly syncDelayMilliseconds = 600,
-  ) {}
+    notifications?: Pick<
+      InspectorNotificationService,
+      'recordOfflineSyncCompleted'
+    >,
+  ) {
+    this.notifications =
+      notifications ?? new InspectorNotificationService(repository)
+  }
 
   getState() {
     return this.repository.getSimulatedConnectivity()
@@ -63,7 +77,11 @@ export class SimulatedConnectivityService {
 
     onSyncing?.()
     await this.delay(this.syncDelayMilliseconds)
-    return (await this.repository.markPendingInspectionsSynced()).length
+    const synchronized = await this.repository.markPendingInspectionsSynced()
+    if (synchronized.length > 0) {
+      await this.notifications.recordOfflineSyncCompleted(synchronized)
+    }
+    return synchronized.length
   }
 }
 

@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/common/EmptyState'
 import { SeverityBadge } from '../../components/common/SeverityBadge'
 import { StatusBadge } from '../../components/common/StatusBadge'
 import { LoadingState } from '../../components/feedback/LoadingState'
+import { useToast } from '../../components/feedback/useToast'
 import { SignaturePad } from '../../components/inspection/SignaturePad'
 import { EvidencePreview } from '../../components/inspection/EvidencePreview'
 import type { EquipmentStatus, SignatureData } from '../../domain/models'
@@ -28,6 +29,7 @@ export function InspectionReviewPage() {
   const { user } = useAuth()
   const { connectivity } = useConnectivity()
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [state, setState] = useState<ReviewState | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -87,7 +89,21 @@ export function InspectionReviewPage() {
     setSubmitting(true)
     setMutationError('')
     try {
-      await inspectionService.submitInspection(id, user.id, connectivity)
+      const submission = await inspectionService.submitInspection(
+        id,
+        user.id,
+        connectivity,
+      )
+      showToast({
+        message:
+          submission.inspection.syncStatus === 'PENDING_SYNC'
+            ? 'Inspection saved offline — waiting to sync.'
+            : 'Inspection submitted successfully.',
+        tone:
+          submission.inspection.syncStatus === 'PENDING_SYNC'
+            ? 'warning'
+            : 'success',
+      })
       navigate(`/inspector/inspection/${id}/result`, { replace: true })
     } catch (submitError) {
       setMutationError(

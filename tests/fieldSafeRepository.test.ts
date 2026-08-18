@@ -72,6 +72,12 @@ describe('deterministic FieldSafe seed data', () => {
     expect(failCount).toBe(12)
     expect(seed.defects).toHaveLength(12)
     expect(seed.correctiveActions).toHaveLength(12)
+    expect(seed.inspectorNotifications).toHaveLength(4)
+    expect(
+      seed.inspectorNotifications.filter(
+        (notification) => notification.userId === 'USR-INSP-001',
+      ),
+    ).toHaveLength(2)
     expect(
       seed.inspections.filter(
         (item) => item.reviewStatus === 'Pending Review',
@@ -324,5 +330,25 @@ describe('BrowserFieldSafeRepository persistence', () => {
         (defect) => defect.resolvedByUserId === null,
       ),
     ).toBe(true)
+  })
+
+  it('migrates version-five data with deterministic Inspector notifications', async () => {
+    const storage = new MemoryStorage()
+    const { adapter, repository } = createRepository(storage)
+    const versionFiveData = createFieldSafeSeedData()
+    versionFiveData.equipment[0].site = 'Preserved Notification Migration Site'
+    delete (versionFiveData as unknown as Record<string, unknown>)
+      .inspectorNotifications
+    adapter.write({ schemaVersion: 5, data: versionFiveData })
+
+    await repository.initialize()
+
+    expect(adapter.read()?.schemaVersion).toBe(OPERATIONAL_DATA_SCHEMA_VERSION)
+    expect((await repository.getEquipment())[0].site).toBe(
+      'Preserved Notification Migration Site',
+    )
+    expect(
+      await repository.getInspectorNotifications('USR-INSP-001'),
+    ).toHaveLength(2)
   })
 })

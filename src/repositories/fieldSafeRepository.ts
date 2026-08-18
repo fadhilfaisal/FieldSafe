@@ -7,6 +7,7 @@ import type {
   Equipment,
   Inspection,
   InspectionDraft,
+  InspectorNotification,
   SimulatedConnectivityState,
   User,
 } from '../domain/models'
@@ -35,6 +36,19 @@ export interface FieldSafeRepository {
     state: SimulatedConnectivityState,
   ): Promise<SimulatedConnectivityState>
   markPendingInspectionsSynced(): Promise<Inspection[]>
+  getInspectorNotifications(userId: string): Promise<InspectorNotification[]>
+  saveInspectorNotification(
+    notification: InspectorNotification,
+  ): Promise<InspectorNotification>
+  markInspectorNotificationRead(
+    notificationId: string,
+    userId: string,
+    readAt: string,
+  ): Promise<InspectorNotification>
+  markAllInspectorNotificationsRead(
+    userId: string,
+    readAt: string,
+  ): Promise<InspectorNotification[]>
   getChecklists(): Promise<Checklist[]>
   getChecklistItems(checklistId?: string): Promise<ChecklistItem[]>
   getChecklistResponses(inspectionId?: string): Promise<ChecklistResponse[]>
