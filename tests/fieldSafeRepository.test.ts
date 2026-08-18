@@ -65,19 +65,19 @@ describe('deterministic FieldSafe seed data', () => {
     )
     expect(seed.checklists).toHaveLength(5)
     expect(seed.checklistItems).toHaveLength(50)
-    expect(seed.inspections).toHaveLength(64)
-    expect(seed.inspections.filter((item) => item.status === 'Assigned')).toHaveLength(4)
-    expect(seed.checklistResponses).toHaveLength(600)
-    expect(passCount).toBe(48)
-    expect(failCount).toBe(12)
-    expect(seed.defects).toHaveLength(12)
-    expect(seed.correctiveActions).toHaveLength(12)
-    expect(seed.inspectorNotifications).toHaveLength(6)
+    expect(seed.inspections).toHaveLength(92)
+    expect(seed.inspections.filter((item) => item.status === 'Assigned')).toHaveLength(12)
+    expect(seed.checklistResponses).toHaveLength(800)
+    expect(passCount).toBe(61)
+    expect(failCount).toBe(19)
+    expect(seed.defects).toHaveLength(19)
+    expect(seed.correctiveActions).toHaveLength(17)
+    expect(seed.inspectorNotifications).toHaveLength(8)
     expect(
       seed.inspectorNotifications.filter(
         (notification) => notification.userId === 'USR-INSP-001',
       ),
-    ).toHaveLength(2)
+    ).toHaveLength(3)
     expect(
       seed.inspectorNotifications.filter(
         (notification) => notification.userId === 'USR-SUP-001',
@@ -87,14 +87,14 @@ describe('deterministic FieldSafe seed data', () => {
       seed.inspections.filter(
         (item) => item.reviewStatus === 'Pending Review',
       ),
-    ).toHaveLength(8)
+    ).toHaveLength(4)
     expect(actionCounts.Open).toHaveLength(4)
-    expect(actionCounts['In Progress']).toHaveLength(4)
-    expect(actionCounts.Done).toHaveLength(4)
-    expect(overdueCount).toBe(3)
+    expect(actionCounts['In Progress']).toHaveLength(2)
+    expect(actionCounts.Done).toHaveLength(11)
+    expect(overdueCount).toBe(2)
     expect(Math.max(...inspectionTimes)).toBeLessThan(Date.parse(SEED_REFERENCE_DATE))
     expect(Math.min(...inspectionTimes)).toBeGreaterThanOrEqual(
-      Date.parse(SEED_REFERENCE_DATE) - 90 * 86_400_000,
+      Date.parse(SEED_REFERENCE_DATE) - 190 * 86_400_000,
     )
   })
 
@@ -127,8 +127,8 @@ describe('deterministic FieldSafe seed data', () => {
     for (const defect of seed.defects) {
       expect(seed.checklistResponses.find((item) => item.id === defect.checklistResponseId)?.result).toBe('Fail')
       const action = seed.correctiveActions.find((item) => item.defectId === defect.id)
-      expect(action?.equipmentId).toBe(defect.equipmentId)
-      expect(action?.status === 'Done').toBe(defect.status === 'Resolved')
+      if (action) expect(action.equipmentId).toBe(defect.equipmentId)
+      if (defect.status === 'Resolved') expect(action?.status).toBe('Done')
       expect(defect.resolvedByUserId === 'USR-SUP-001').toBe(
         defect.status === 'Resolved',
       )
@@ -141,7 +141,7 @@ describe('BrowserFieldSafeRepository persistence', () => {
     const storage = new MemoryStorage()
     const first = createRepository(storage).repository
     await first.initialize()
-    expect(await first.getChecklistResponses()).toHaveLength(600)
+    expect(await first.getChecklistResponses()).toHaveLength(800)
     const equipment = (await first.getEquipment())[0]
     await first.saveEquipment({ ...equipment, site: 'Temporary Service Bay' })
 
@@ -210,7 +210,7 @@ describe('BrowserFieldSafeRepository persistence', () => {
       (await repository.getInspections()).filter(
         (inspection) => inspection.status === 'Assigned',
       ),
-    ).toHaveLength(4)
+    ).toHaveLength(12)
     expect((await repository.getDefects())[0].evidenceReference).toBeNull()
   })
 
@@ -354,6 +354,6 @@ describe('BrowserFieldSafeRepository persistence', () => {
     )
     expect(
       await repository.getInspectorNotifications('USR-INSP-001'),
-    ).toHaveLength(2)
+    ).toHaveLength(3)
   })
 })

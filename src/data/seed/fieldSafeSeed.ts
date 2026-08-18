@@ -20,14 +20,62 @@ import type {
   User,
 } from '../../domain/models'
 
-export const SEED_REFERENCE_DATE = '2026-08-14T09:00:00.000Z'
-
 const DAY_IN_MS = 86_400_000
-const seedReferenceTime = Date.parse(SEED_REFERENCE_DATE)
 
-function isoDaysFromReference(days: number, hourOffset = 0) {
+export function createSeedReferenceDate(now: Date = new Date()) {
+  const reference = new Date(now)
+  reference.setUTCMinutes(0, 0, 0)
+  return reference.toISOString()
+}
+
+export const SEED_REFERENCE_DATE = createSeedReferenceDate()
+
+function isoDaysFromReference(
+  days: number,
+  hourOffset = 0,
+  referenceDate = SEED_REFERENCE_DATE,
+) {
   return new Date(
-    seedReferenceTime + days * DAY_IN_MS + hourOffset * 3_600_000,
+    Date.parse(referenceDate) + days * DAY_IN_MS + hourOffset * 3_600_000,
+  ).toISOString()
+}
+
+function isoInReferenceMonth(
+  referenceDate: string,
+  monthOffset: number,
+  position: number,
+  count: number,
+) {
+  const reference = new Date(referenceDate)
+  const monthStart = new Date(
+    Date.UTC(
+      reference.getUTCFullYear(),
+      reference.getUTCMonth() + monthOffset,
+      1,
+    ),
+  )
+  const daysAvailable =
+    monthOffset === 0
+      ? Math.max(1, reference.getUTCDate() - 1)
+      : new Date(
+          Date.UTC(
+            monthStart.getUTCFullYear(),
+            monthStart.getUTCMonth() + 1,
+            0,
+          ),
+        ).getUTCDate()
+  const day = Math.max(
+    1,
+    Math.floor(((position + 1) * daysAvailable) / (count + 1)),
+  )
+  return new Date(
+    Date.UTC(
+      monthStart.getUTCFullYear(),
+      monthStart.getUTCMonth(),
+      day,
+      7 + (position % 9),
+      30,
+    ),
   ).toISOString()
 }
 
@@ -192,23 +240,34 @@ interface FailureDefinition {
   defectStatus: DefectStatus
   actionStatus: CorrectiveActionStatus
   dueOffsetDays: number
+  hasAction?: boolean
+  reviewStatus?: Inspection['reviewStatus']
   completedOffsetDays?: number
 }
 
 const failures: FailureDefinition[] = [
-  { inspectionIndex: 0, severity: 'Critical', defectStatus: 'Open', actionStatus: 'Open', dueOffsetDays: -2 },
-  { inspectionIndex: 1, severity: 'Major', defectStatus: 'Under Review', actionStatus: 'In Progress', dueOffsetDays: 3 },
-  { inspectionIndex: 2, severity: 'Minor', defectStatus: 'Open', actionStatus: 'Open', dueOffsetDays: 5 },
-  { inspectionIndex: 3, severity: 'Critical', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -4, completedOffsetDays: -5 },
-  { inspectionIndex: 4, severity: 'Major', defectStatus: 'Open', actionStatus: 'In Progress', dueOffsetDays: -1 },
-  { inspectionIndex: 5, severity: 'Critical', defectStatus: 'Under Review', actionStatus: 'In Progress', dueOffsetDays: 2 },
-  { inspectionIndex: 6, severity: 'Minor', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -5, completedOffsetDays: -6 },
-  { inspectionIndex: 7, severity: 'Major', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -7, completedOffsetDays: -8 },
-  { inspectionIndex: 8, severity: 'Critical', defectStatus: 'Open', actionStatus: 'Open', dueOffsetDays: -3 },
-  { inspectionIndex: 9, severity: 'Major', defectStatus: 'Under Review', actionStatus: 'In Progress', dueOffsetDays: 4 },
-  { inspectionIndex: 10, severity: 'Minor', defectStatus: 'Open', actionStatus: 'Open', dueOffsetDays: 6 },
-  { inspectionIndex: 11, severity: 'Critical', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -9, completedOffsetDays: -10 },
+  { inspectionIndex: 0, severity: 'Critical', defectStatus: 'Open', actionStatus: 'Open', dueOffsetDays: -1, reviewStatus: 'Reviewed' },
+  { inspectionIndex: 8, severity: 'Major', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -145 },
+  { inspectionIndex: 12, severity: 'Critical', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -120 },
+  { inspectionIndex: 17, severity: 'Minor', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -112 },
+  { inspectionIndex: 22, severity: 'Major', defectStatus: 'Open', actionStatus: 'Open', dueOffsetDays: 4, reviewStatus: 'Reviewed' },
+  { inspectionIndex: 28, severity: 'Critical', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -90 },
+  { inspectionIndex: 34, severity: 'Major', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -80 },
+  { inspectionIndex: 37, severity: 'Minor', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -68 },
+  { inspectionIndex: 42, severity: 'Critical', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -62 },
+  { inspectionIndex: 45, severity: 'Major', defectStatus: 'Open', actionStatus: 'In Progress', dueOffsetDays: -3, reviewStatus: 'Reviewed' },
+  { inspectionIndex: 51, severity: 'Minor', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -48 },
+  { inspectionIndex: 54, severity: 'Minor', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -36 },
+  { inspectionIndex: 59, severity: 'Major', defectStatus: 'Under Review', actionStatus: 'Open', dueOffsetDays: 1, hasAction: false, reviewStatus: 'Pending Review' },
+  { inspectionIndex: 64, severity: 'Minor', defectStatus: 'Open', actionStatus: 'Open', dueOffsetDays: 3, reviewStatus: 'Reviewed' },
+  { inspectionIndex: 66, severity: 'Minor', defectStatus: 'Open', actionStatus: 'Open', dueOffsetDays: 0.5, reviewStatus: 'Pending Review' },
+  { inspectionIndex: 69, severity: 'Major', defectStatus: 'Resolved', actionStatus: 'Done', dueOffsetDays: -6 },
+  { inspectionIndex: 73, severity: 'Major', defectStatus: 'Under Review', actionStatus: 'In Progress', dueOffsetDays: 2, hasAction: false, reviewStatus: 'Pending Review' },
+  { inspectionIndex: 77, severity: 'Critical', defectStatus: 'Under Review', actionStatus: 'In Progress', dueOffsetDays: 5, reviewStatus: 'Pending Review' },
+  { inspectionIndex: 79, severity: 'Critical', defectStatus: 'Open', actionStatus: 'Done', dueOffsetDays: -2, completedOffsetDays: -0.5, reviewStatus: 'Reviewed' },
 ]
+
+export const SEED_HISTORICAL_MONTHLY_COUNTS = [11, 14, 12, 15, 13, 15]
 
 function checklistForType(type: EquipmentType) {
   const checklist = checklists.find((candidate) => candidate.equipmentTypes.includes(type))
@@ -218,12 +277,21 @@ function checklistForType(type: EquipmentType) {
 
 export function createSeedAssignedInspections(
   equipment: Equipment[],
+  referenceDate = createSeedReferenceDate(),
 ): Inspection[] {
   const definitions = [
-    { id: 'ASG-001', equipmentId: 'EQ-014', inspectorId: 'USR-INSP-001', dueOffset: 0.25 },
-    { id: 'ASG-002', equipmentId: 'EQ-004', inspectorId: 'USR-INSP-001', dueOffset: 0.5 },
-    { id: 'ASG-003', equipmentId: 'EQ-018', inspectorId: 'USR-INSP-002', dueOffset: 0.35 },
-    { id: 'ASG-004', equipmentId: 'EQ-007', inspectorId: 'USR-INSP-002', dueOffset: 1 },
+    { id: 'ASG-001', equipmentId: 'EQ-014', inspectorId: 'USR-INSP-001', assignedOffset: -0.5, dueOffset: -1.5 },
+    { id: 'ASG-002', equipmentId: 'EQ-004', inspectorId: 'USR-INSP-001', assignedOffset: -1, dueOffset: -0.1 },
+    { id: 'ASG-005', equipmentId: 'EQ-003', inspectorId: 'USR-INSP-001', assignedOffset: -2, dueOffset: 0.25 },
+    { id: 'ASG-006', equipmentId: 'EQ-009', inspectorId: 'USR-INSP-001', assignedOffset: -3, dueOffset: 1 },
+    { id: 'ASG-007', equipmentId: 'EQ-011', inspectorId: 'USR-INSP-001', assignedOffset: -4, dueOffset: 2.5 },
+    { id: 'ASG-008', equipmentId: 'EQ-015', inspectorId: 'USR-INSP-001', assignedOffset: -5, dueOffset: 5 },
+    { id: 'ASG-003', equipmentId: 'EQ-018', inspectorId: 'USR-INSP-002', assignedOffset: -0.4, dueOffset: -2 },
+    { id: 'ASG-004', equipmentId: 'EQ-007', inspectorId: 'USR-INSP-002', assignedOffset: -1.2, dueOffset: -0.2 },
+    { id: 'ASG-009', equipmentId: 'EQ-012', inspectorId: 'USR-INSP-002', assignedOffset: -2.2, dueOffset: 0.3 },
+    { id: 'ASG-010', equipmentId: 'EQ-013', inspectorId: 'USR-INSP-002', assignedOffset: -3.2, dueOffset: 1.5 },
+    { id: 'ASG-011', equipmentId: 'EQ-016', inspectorId: 'USR-INSP-002', assignedOffset: -4.2, dueOffset: 3 },
+    { id: 'ASG-012', equipmentId: 'EQ-017', inspectorId: 'USR-INSP-002', assignedOffset: -5.2, dueOffset: 6 },
   ]
 
   return definitions.map((definition) => {
@@ -241,8 +309,12 @@ export function createSeedAssignedInspections(
       inspectorId: definition.inspectorId,
       status: 'Assigned',
       result: null,
-      assignedAt: isoDaysFromReference(-1),
-      dueAt: isoDaysFromReference(definition.dueOffset),
+      assignedAt: isoDaysFromReference(
+        definition.assignedOffset,
+        0,
+        referenceDate,
+      ),
+      dueAt: isoDaysFromReference(definition.dueOffset, 0, referenceDate),
       startedAt: null,
       completedAt: null,
       submittedAt: null,
@@ -270,7 +342,7 @@ export function createSeedInspectorNotifications(
   equipment: Equipment[],
   availableChecklists: Checklist[],
 ): InspectorNotification[] {
-  return inspections
+  const notifications = inspections
     .filter((inspection) => inspection.status !== 'Completed')
     .map((inspection) => {
       const assignedEquipment = equipment.find(
@@ -298,6 +370,12 @@ export function createSeedInspectorNotifications(
       } satisfies InspectorNotification
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+
+  return ['USR-INSP-001', 'USR-INSP-002'].flatMap((inspectorId) =>
+    notifications
+      .filter((notification) => notification.userId === inspectorId)
+      .slice(0, 3),
+  )
 }
 
 export function createSeedSupervisorNotifications(
@@ -343,7 +421,9 @@ export function createSeedSupervisorNotifications(
     })
 }
 
-export function createFieldSafeSeedData(): OperationalData {
+export function createFieldSafeSeedData(
+  referenceDate = createSeedReferenceDate(),
+): OperationalData {
   const checklistItems = createChecklistItems()
   const equipment: Equipment[] = equipmentDefinitions.map((definition, index) => ({
     id: `EQ-${String(index + 1).padStart(3, '0')}`,
@@ -351,7 +431,7 @@ export function createFieldSafeSeedData(): OperationalData {
     status: 'Fit',
     checklistId: checklistForType(definition.type).id,
     lastInspectionAt: null,
-    createdAt: isoDaysFromReference(-180 - index),
+    createdAt: isoDaysFromReference(-240 - index, 0, referenceDate),
   }))
 
   const failureByInspection = new Map(
@@ -362,41 +442,57 @@ export function createFieldSafeSeedData(): OperationalData {
   const defects: Defect[] = []
   const correctiveActions: CorrectiveAction[] = []
 
-  for (let index = 0; index < 60; index += 1) {
-    const inspectedEquipment = equipment[index % equipment.length]
-    const checklist = checklists.find(
-      (candidate) => candidate.id === inspectedEquipment.checklistId,
-    )!
-    const items = checklistItems.filter((item) => item.checklistId === checklist.id)
-    const failure = failureByInspection.get(index)
-    const daysAgo = 1 + Math.floor((index * 88) / 59)
-    const completedAt = isoDaysFromReference(-daysAgo, -(index % 7))
-    const startedAt = new Date(
-      Date.parse(completedAt) - 35 * 60_000,
-    ).toISOString()
-    const inspectionId = `INS-${String(index + 1).padStart(3, '0')}`
-    const failedItemIndex = failure ? index % items.length : -1
+  let index = 0
+  SEED_HISTORICAL_MONTHLY_COUNTS.forEach((monthlyCount, monthIndex) => {
+    for (let position = 0; position < monthlyCount; position += 1) {
+      const inspectedEquipment = equipment[index % equipment.length]
+      const checklist = checklists.find(
+        (candidate) => candidate.id === inspectedEquipment.checklistId,
+      )!
+      const items = checklistItems.filter(
+        (item) => item.checklistId === checklist.id,
+      )
+      const failure = failureByInspection.get(index)
+      const completedAt = isoInReferenceMonth(
+        referenceDate,
+        monthIndex - (SEED_HISTORICAL_MONTHLY_COUNTS.length - 1),
+        position,
+        monthlyCount,
+      )
+      const startedAt = new Date(
+        Date.parse(completedAt) - 35 * 60_000,
+      ).toISOString()
+      const inspectionId = `INS-${String(index + 1).padStart(3, '0')}`
+      const failedItemIndex = failure ? index % items.length : -1
 
-    inspections.push({
-      id: inspectionId,
-      equipmentId: inspectedEquipment.id,
-      checklistId: checklist.id,
-      inspectorId: index % 2 === 0 ? 'USR-INSP-001' : 'USR-INSP-002',
-      status: 'Completed',
-      result: failure ? 'Fail' : 'Pass',
-      assignedAt: new Date(Date.parse(startedAt) - DAY_IN_MS).toISOString(),
-      dueAt: completedAt,
-      startedAt,
-      completedAt,
-      submittedAt: completedAt,
-      signature: null,
-      syncStatus: 'SYNCED',
-      reviewStatus: index < 8 ? 'Pending Review' : 'Reviewed',
-      reviewedAt: index < 8 ? null : completedAt,
-      reviewedByUserId: index < 8 ? null : 'USR-SUP-001',
-    })
+      inspections.push({
+        id: inspectionId,
+        equipmentId: inspectedEquipment.id,
+        checklistId: checklist.id,
+        inspectorId: index % 2 === 0 ? 'USR-INSP-001' : 'USR-INSP-002',
+        status: 'Completed',
+        result: failure ? 'Fail' : 'Pass',
+        assignedAt: new Date(Date.parse(startedAt) - DAY_IN_MS).toISOString(),
+        dueAt: completedAt,
+        startedAt,
+        completedAt,
+        submittedAt: completedAt,
+        syncStatus: 'SYNCED',
+        signature: {
+          strokes: [[{ x: 0.14, y: 0.52 }, { x: 0.78, y: 0.44 }]],
+        },
+        reviewStatus: failure ? failure.reviewStatus ?? 'Reviewed' : null,
+        reviewedAt:
+          failure && (failure.reviewStatus ?? 'Reviewed') === 'Reviewed'
+            ? completedAt
+            : null,
+        reviewedByUserId:
+          failure && (failure.reviewStatus ?? 'Reviewed') === 'Reviewed'
+            ? 'USR-SUP-001'
+            : null,
+      })
 
-    items.forEach((item, itemIndex) => {
+      items.forEach((item, itemIndex) => {
       const responseId = `RSP-${String(index + 1).padStart(3, '0')}-${String(itemIndex + 1).padStart(2, '0')}`
       const failed = itemIndex === failedItemIndex
       checklistResponses.push({
@@ -412,8 +508,8 @@ export function createFieldSafeSeedData(): OperationalData {
       const defectNumber = defects.length + 1
       const defectId = `DEF-${String(defectNumber).padStart(3, '0')}`
       const resolvedAt =
-        failure.defectStatus === 'Resolved' && failure.completedOffsetDays !== undefined
-          ? isoDaysFromReference(failure.completedOffsetDays)
+        failure.defectStatus === 'Resolved'
+          ? new Date(Date.parse(completedAt) + 2 * DAY_IN_MS).toISOString()
           : null
 
       defects.push({
@@ -432,6 +528,8 @@ export function createFieldSafeSeedData(): OperationalData {
         resolvedByUserId: resolvedAt ? 'USR-SUP-001' : null,
       })
 
+      if (failure.hasAction === false) return
+
       correctiveActions.push({
         id: `CA-${String(defectNumber).padStart(3, '0')}`,
         defectId,
@@ -442,13 +540,30 @@ export function createFieldSafeSeedData(): OperationalData {
         description: `Inspect and repair the reported ${item.category.toLowerCase()} condition, then confirm serviceability.`,
         status: failure.actionStatus,
         createdAt: new Date(Date.parse(completedAt) + 2 * 60 * 60_000).toISOString(),
-        dueAt: isoDaysFromReference(failure.dueOffsetDays),
-        completedAt: resolvedAt,
+        dueAt:
+          failure.defectStatus === 'Resolved'
+            ? new Date(Date.parse(completedAt) + 5 * DAY_IN_MS).toISOString()
+            : isoDaysFromReference(
+                failure.dueOffsetDays,
+                0,
+                referenceDate,
+              ),
+        completedAt:
+          failure.actionStatus === 'Done'
+            ? resolvedAt ??
+              isoDaysFromReference(
+                failure.completedOffsetDays ?? -0.5,
+                0,
+                referenceDate,
+              )
+            : null,
       })
-    })
-  }
+      })
+      index += 1
+    }
+  })
 
-  inspections.push(...createSeedAssignedInspections(equipment))
+  inspections.push(...createSeedAssignedInspections(equipment, referenceDate))
 
   equipment.forEach((item) => {
     const latestInspection = inspections

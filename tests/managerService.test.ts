@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { SEED_REFERENCE_DATE } from '../src/data/seed/fieldSafeSeed'
 import { DEMO_EVIDENCE } from '../src/domain/evidence'
 import type { SignatureData } from '../src/domain/models'
 import { deriveEquipmentStatus } from '../src/domain/safety'
@@ -12,7 +13,7 @@ import { BrowserStorageAdapter } from '../src/storage/browserStorageAdapter'
 import type { StorageDriver } from '../src/storage/storageAdapter'
 
 const STORAGE_KEY = 'fieldsafe:test:manager-operational'
-const NOW = '2026-08-14T12:00:00.000Z'
+const NOW = SEED_REFERENCE_DATE
 const signature: SignatureData = {
   strokes: [[{ x: 0.1, y: 0.5 }, { x: 0.8, y: 0.4 }]],
 }
@@ -101,10 +102,10 @@ describe('Manager visibility service', () => {
     const { manager } = createServices()
     const analytics = await manager.getComplianceAnalytics()
 
-    expect(analytics.inspectionCount).toBe(60)
-    expect(analytics.passedCount).toBe(48)
-    expect(analytics.failedCount).toBe(12)
-    expect(analytics.complianceRate).toBe(80)
+    expect(analytics.inspectionCount).toBe(80)
+    expect(analytics.passedCount).toBe(61)
+    expect(analytics.failedCount).toBe(19)
+    expect(analytics.complianceRate).toBe(76.3)
     expect(
       analytics.trend.reduce(
         (total, period) => total + period.inspectionCount,

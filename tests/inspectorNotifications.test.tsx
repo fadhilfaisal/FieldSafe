@@ -119,8 +119,8 @@ describe('Inspector persistent notifications', () => {
     const arjun = await flow.notifications.getNotifications('USR-INSP-001')
     const neha = await flow.notifications.getNotifications('USR-INSP-002')
 
-    expect(arjun).toHaveLength(2)
-    expect(neha).toHaveLength(2)
+    expect(arjun).toHaveLength(3)
+    expect(neha).toHaveLength(3)
     expect(arjun.every((notification) => notification.userId === 'USR-INSP-001')).toBe(true)
     expect(neha.every((notification) => notification.userId === 'USR-INSP-002')).toBe(true)
     expect(arjun.every((notification) => notification.type === 'NEW_ASSIGNMENT')).toBe(true)
@@ -130,12 +130,12 @@ describe('Inspector persistent notifications', () => {
     let router = await renderAuthenticated('/inspector')
     const user = userEvent.setup()
     const bell = await screen.findByRole('button', {
-      name: 'Notifications, 2 unread',
+      name: 'Notifications, 3 unread',
     })
 
     await user.click(bell)
     const panel = screen.getByRole('region', { name: 'Inspector notifications' })
-    expect(within(panel).getAllByText('New inspection assigned')).toHaveLength(2)
+    expect(within(panel).getAllByText('New inspection assigned')).toHaveLength(3)
     expect(within(panel).queryByRole('button', { name: 'View inspection' })).toBeNull()
     expect(within(panel).queryByRole('button', { name: /Mark .* as read/ })).toBeNull()
     const assignmentRow = within(panel).getByRole('button', {
@@ -157,10 +157,10 @@ describe('Inspector persistent notifications', () => {
     router.dispose()
     router = await renderAuthenticated('/inspector')
     expect(
-      await screen.findByRole('button', { name: 'Notifications, 1 unread' }),
+      await screen.findByRole('button', { name: 'Notifications, 2 unread' }),
     ).toBeTruthy()
 
-    await user.click(screen.getByRole('button', { name: 'Notifications, 1 unread' }))
+    await user.click(screen.getByRole('button', { name: 'Notifications, 2 unread' }))
     const readRow = screen.getByRole('button', {
       name: /Open New inspection assigned: MWP-003/,
     })
@@ -173,7 +173,7 @@ describe('Inspector persistent notifications', () => {
     const router = await renderAuthenticated('/inspector')
     const user = userEvent.setup()
     await user.click(
-      await screen.findByRole('button', { name: 'Notifications, 2 unread' }),
+      await screen.findByRole('button', { name: 'Notifications, 3 unread' }),
     )
     const row = screen.getByRole('button', {
       name: /Open New inspection assigned: MWP-003/,
@@ -201,7 +201,7 @@ describe('Inspector persistent notifications', () => {
     await renderAuthenticated('/inspector')
     const user = userEvent.setup()
     const bell = await screen.findByRole('button', {
-      name: 'Notifications, 2 unread',
+      name: 'Notifications, 3 unread',
     })
 
     await user.click(bell)
@@ -273,7 +273,7 @@ describe('Inspector persistent notifications', () => {
     const user = userEvent.setup()
 
     await user.click(
-      await screen.findByRole('button', { name: 'Notifications, 3 unread' }),
+      await screen.findByRole('button', { name: 'Notifications, 4 unread' }),
     )
     expect(screen.queryByRole('button', { name: 'View history' })).toBeNull()
     const syncRow = screen.getByRole('button', {
@@ -310,7 +310,7 @@ describe('Inspector persistent notifications', () => {
     const user = userEvent.setup()
 
     await user.click(
-      await screen.findByRole('button', { name: 'Notifications, 14 unread' }),
+      await screen.findByRole('button', { name: 'Notifications, 15 unread' }),
     )
     const panel = screen.getByRole('region', { name: 'Inspector notifications' })
     const header = screen.getByTestId('notification-panel-header')
@@ -322,7 +322,7 @@ describe('Inspector persistent notifications', () => {
     expect(header.className).toContain('shrink-0')
     expect(list.className).toContain('overflow-y-auto')
     expect(list.className).toContain('overscroll-contain')
-    expect(rows).toHaveLength(14)
+    expect(rows).toHaveLength(15)
     expect(rows[0].textContent).toContain('Bulk notification 11')
     expect(screen.getByText('Bulk notification 0')).toBeTruthy()
 

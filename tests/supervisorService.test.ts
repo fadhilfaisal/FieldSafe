@@ -6,6 +6,7 @@ import {
   type PersistedSession,
 } from '../src/auth/sessionStore'
 import { DEMO_EVIDENCE } from '../src/domain/evidence'
+import { SEED_REFERENCE_DATE } from '../src/data/seed/fieldSafeSeed'
 import type { SignatureData } from '../src/domain/models'
 import { isCorrectiveActionOverdue } from '../src/domain/safety'
 import {
@@ -25,7 +26,7 @@ import type { StorageDriver } from '../src/storage/storageAdapter'
 
 const OPERATIONAL_KEY = 'fieldsafe:test:supervisor-operational'
 const SESSION_KEY = 'fieldsafe:test:supervisor-session'
-const NOW = '2026-08-14T12:00:00.000Z'
+const NOW = SEED_REFERENCE_DATE
 const signature: SignatureData = {
   strokes: [[{ x: 0.1, y: 0.5 }, { x: 0.8, y: 0.4 }]],
 }
@@ -147,7 +148,7 @@ describe('Supervisor review and corrective action service', () => {
 
     const reviews = await supervisor.getReviews('Pending Review')
 
-    expect(reviews).toHaveLength(8)
+    expect(reviews).toHaveLength(4)
     expect(reviews[0].highestSeverity).toBe('Critical')
     expect(reviews.every((review) => review.inspection.status === 'Completed')).toBe(true)
     expect(reviews.every((review) => review.equipment.id === review.inspection.equipmentId)).toBe(true)
@@ -274,17 +275,30 @@ describe('Supervisor review and corrective action service', () => {
 
   it('marks a review as reviewed and reconstructs the persisted lifecycle', async () => {
     const flow = createServices()
-    await flow.supervisor.markReviewReviewed('INS-001', 'USR-SUP-001')
+    const pendingReviews = await flow.supervisor.getReviews('Pending Review')
+    const pending = (
+      await Promise.all(
+        pendingReviews.map((review) =>
+          flow.supervisor.getReviewDetail(review.inspection.id),
+        ),
+      )
+    ).find((review) => review.actions.length > 0)!
+    await flow.supervisor.markReviewReviewed(
+      pending.inspection.id,
+      'USR-SUP-001',
+    )
 
     const reconstructed = createServices(flow.storage)
-    const inspection = await reconstructed.repository.getInspectionById('INS-001')
+    const inspection = await reconstructed.repository.getInspectionById(
+      pending.inspection.id,
+    )
 
     expect(inspection?.reviewStatus).toBe('Reviewed')
     expect(inspection?.reviewedAt).toBe(NOW)
     expect(inspection?.reviewedByUserId).toBe('USR-SUP-001')
     expect(
       (await reconstructed.supervisor.getReviews('Pending Review')).some(
-        (review) => review.inspection.id === 'INS-001',
+        (review) => review.inspection.id === pending.inspection.id,
       ),
     ).toBe(false)
   })
@@ -317,7 +331,7 @@ describe('Supervisor review and corrective action service', () => {
     const { supervisor } = createServices()
     const actions = await supervisor.getActions()
 
-    expect(actions.filter((item) => item.overdue)).toHaveLength(3)
+    expect(actions.filter((item) => item.overdue)).toHaveLength(2)
     expect(
       actions.every(
         (item) => item.overdue === isCorrectiveActionOverdue(item.action, NOW),

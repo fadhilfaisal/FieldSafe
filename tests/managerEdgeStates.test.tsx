@@ -12,6 +12,8 @@ const managerServiceMock = vi.hoisted(() => ({
 
 vi.mock('../src/services/managerService', () => ({
   managerService: managerServiceMock,
+  normalizeManagerAnalyticsRange: (value: string | null | undefined) =>
+    value === '30d' || value === '90d' || value === 'all' ? value : '6m',
 }))
 
 import { ManagerCompliancePage } from '../src/pages/manager/ManagerCompliancePage'
@@ -67,7 +69,11 @@ describe('Manager empty dataset states', () => {
   })
 
   it('shows explicit empty compliance states', async () => {
-    render(<ManagerCompliancePage />)
+    render(
+      <MemoryRouter>
+        <ManagerCompliancePage />
+      </MemoryRouter>,
+    )
 
     expect(await screen.findByRole('heading', { name: 'No pass-rate history' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'No inspection volume' })).toBeTruthy()
@@ -75,7 +81,11 @@ describe('Manager empty dataset states', () => {
   })
 
   it('shows explicit empty defect states', async () => {
-    render(<ManagerDefectsPage />)
+    render(
+      <MemoryRouter>
+        <ManagerDefectsPage />
+      </MemoryRouter>,
+    )
 
     expect(await screen.findByRole('heading', { name: 'No defect severity data' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'No defect volume' })).toBeTruthy()

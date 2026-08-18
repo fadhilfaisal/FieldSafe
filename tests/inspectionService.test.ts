@@ -86,8 +86,8 @@ describe('Inspector workflow service', () => {
     const arjunQueue = await service.getInspectorQueue('USR-INSP-001')
     const nehaQueue = await service.getInspectorQueue('USR-INSP-002')
 
-    expect(arjunQueue).toHaveLength(2)
-    expect(nehaQueue).toHaveLength(2)
+    expect(arjunQueue).toHaveLength(6)
+    expect(nehaQueue).toHaveLength(6)
     expect(arjunQueue.every((item) => item.inspection.inspectorId === 'USR-INSP-001')).toBe(true)
     expect(arjunQueue.every((item) => item.equipment.checklistId === item.checklist.id)).toBe(true)
   })

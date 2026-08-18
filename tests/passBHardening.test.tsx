@@ -176,7 +176,7 @@ describe('TASK-029 Pass B product hardening', () => {
     expect(screen.queryByText('Across the available historical period')).toBeNull()
     expect(screen.queryByText('Inspections completed without a failed response')).toBeNull()
     expect(screen.queryByText('Inspections containing one or more failures')).toBeNull()
-    expect(screen.getByText('Monthly performance across the seeded historical period.')).toBeTruthy()
+    expect(screen.getByText('Monthly performance across the selected reporting period.')).toBeTruthy()
   })
 
   it('shows a clean pass in recent passed records and opens read-only detail', async () => {

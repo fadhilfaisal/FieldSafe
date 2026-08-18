@@ -30,6 +30,16 @@ const EQUIPMENT_STATUS_ORDER: Record<EquipmentStatus, number> = {
   Fit: 2,
 }
 
+export type ManagerAnalyticsRange = '30d' | '90d' | '6m' | 'all'
+
+export function normalizeManagerAnalyticsRange(
+  value: string | null | undefined,
+): ManagerAnalyticsRange {
+  return value === '30d' || value === '90d' || value === 'all'
+    ? value
+    : '6m'
+}
+
 export interface CompliancePeriod {
   key: string
   label: string
@@ -144,6 +154,36 @@ function monthLabel(key: string) {
   }).format(new Date(`${key}-01T00:00:00.000Z`))
 }
 
+function rangeStart(range: ManagerAnalyticsRange, now: string) {
+  const end = new Date(now)
+  if (range === 'all') return null
+  if (range === '30d') {
+    return new Date(end.getTime() - 30 * 86_400_000).toISOString()
+  }
+  if (range === '90d') {
+    return new Date(end.getTime() - 90 * 86_400_000).toISOString()
+  }
+  return new Date(
+    Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 5, 1),
+  ).toISOString()
+}
+
+function nextMonthKey(key: string) {
+  const [year, month] = key.split('-').map(Number)
+  const next = new Date(Date.UTC(year, month, 1))
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function monthKeysBetween(first: string, last: string) {
+  const keys: string[] = []
+  let key = first
+  while (key <= last) {
+    keys.push(key)
+    key = nextMonthKey(key)
+  }
+  return keys
+}
+
 interface ManagerSnapshot {
   equipment: Equipment[]
   inspections: Inspection[]
@@ -163,7 +203,7 @@ export class ManagerService {
 
   async getOverview(): Promise<ManagerOverview> {
     const snapshot = await this.loadSnapshot()
-    const compliance = this.calculateCompliance(snapshot)
+    const compliance = this.calculateCompliance(snapshot, 'all')
     const equipment = this.calculateEquipmentBoard(snapshot)
     const recentThreshold = Date.parse(this.now()) - 30 * 86_400_000
     const recentInspectionCount = snapshot.inspections.filter((inspection) => {
@@ -196,12 +236,23 @@ export class ManagerService {
     }
   }
 
-  async getComplianceAnalytics(): Promise<ManagerComplianceAnalytics> {
-    return this.calculateCompliance(await this.loadSnapshot())
+  async getComplianceAnalytics(
+    range: ManagerAnalyticsRange = '6m',
+  ): Promise<ManagerComplianceAnalytics> {
+    return this.calculateCompliance(await this.loadSnapshot(), range)
   }
 
-  async getDefectAnalytics(): Promise<ManagerDefectAnalytics> {
+  async getDefectAnalytics(
+    range: ManagerAnalyticsRange = '6m',
+  ): Promise<ManagerDefectAnalytics> {
     const snapshot = await this.loadSnapshot()
+    const now = this.now()
+    const start = rangeStart(range, now)
+    const periodDefects = snapshot.defects.filter(
+      (defect) =>
+        (start === null || defect.reportedAt >= start) &&
+        (range === 'all' || defect.reportedAt <= now),
+    )
     const volume = new Map<string, number>()
     const categories = new Map<string, number>()
     const responseById = new Map(
@@ -211,7 +262,7 @@ export class ManagerService {
       snapshot.checklistItems.map((item) => [item.id, item]),
     )
 
-    for (const defect of snapshot.defects) {
+    for (const defect of periodDefects) {
       const key = monthKey(defect.reportedAt)
       volume.set(key, (volume.get(key) ?? 0) + 1)
 
@@ -222,26 +273,26 @@ export class ManagerService {
     }
 
     return {
-      totalDefects: snapshot.defects.length,
+      totalDefects: periodDefects.length,
       unresolvedDefects: snapshot.defects.filter(
         (defect) => defect.status !== 'Resolved',
       ).length,
       severityBreakdown: {
-        Minor: snapshot.defects.filter((defect) => defect.severity === 'Minor')
+        Minor: periodDefects.filter((defect) => defect.severity === 'Minor')
           .length,
-        Major: snapshot.defects.filter((defect) => defect.severity === 'Major')
+        Major: periodDefects.filter((defect) => defect.severity === 'Major')
           .length,
-        Critical: snapshot.defects.filter(
+        Critical: periodDefects.filter(
           (defect) => defect.severity === 'Critical',
         ).length,
       },
       statusBreakdown: {
-        open: snapshot.defects.filter((defect) => defect.status === 'Open')
+        open: periodDefects.filter((defect) => defect.status === 'Open')
           .length,
-        underReview: snapshot.defects.filter(
+        underReview: periodDefects.filter(
           (defect) => defect.status === 'Under Review',
         ).length,
-        resolved: snapshot.defects.filter(
+        resolved: periodDefects.filter(
           (defect) => defect.status === 'Resolved',
         ).length,
       },
@@ -383,10 +434,21 @@ export class ManagerService {
 
   private calculateCompliance(
     snapshot: ManagerSnapshot,
+    range: ManagerAnalyticsRange,
   ): ManagerComplianceAnalytics {
+    const now = this.now()
+    const start = rangeStart(range, now)
     const completed = snapshot.inspections.filter(
-      (inspection) =>
-        inspection.status === 'Completed' && inspection.result !== null,
+      (inspection) => {
+        const timestamp = inspection.submittedAt ?? inspection.completedAt
+        return (
+          inspection.status === 'Completed' &&
+          inspection.result !== null &&
+          timestamp !== null &&
+          (start === null || timestamp >= start) &&
+          (range === 'all' || timestamp <= now)
+        )
+      },
     )
     const passedCount = completed.filter(
       (inspection) => inspection.result === 'Pass',
@@ -422,14 +484,30 @@ export class ManagerService {
       }
     })
 
+    const completedTimestamps = completed.flatMap((inspection) => {
+      const timestamp = inspection.submittedAt ?? inspection.completedAt
+      return timestamp ? [timestamp] : []
+    })
+    const periodKeys =
+      completedTimestamps.length === 0
+        ? []
+        : range === 'all'
+          ? monthKeysBetween(
+              monthKey(completedTimestamps.slice().sort()[0]),
+              monthKey(completedTimestamps.slice().sort().at(-1)!),
+            )
+          : monthKeysBetween(
+              monthKey(start!),
+              monthKey(now),
+            )
+
     return {
       inspectionCount: completed.length,
       passedCount,
       failedCount: completed.length - passedCount,
       complianceRate: calculateRate(passedCount, completed.length),
-      trend: [...trend.entries()]
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, inspections]) => {
+      trend: periodKeys.map((key) => {
+          const inspections = trend.get(key) ?? []
           const periodPassed = inspections.filter(
             (inspection) => inspection.result === 'Pass',
           ).length

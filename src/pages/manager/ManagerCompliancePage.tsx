@@ -1,5 +1,6 @@
 import { ChartNoAxesCombined, CheckCircle2, ClipboardCheck, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { Card } from '../../components/common/Card'
 import { EmptyState } from '../../components/common/EmptyState'
 import { MetricCard } from '../../components/common/MetricCard'
@@ -8,19 +9,24 @@ import { LoadingState } from '../../components/feedback/LoadingState'
 import { AnalyticsColumnChart } from '../../components/manager/AnalyticsColumnChart'
 import { AnalyticsLineChart } from '../../components/manager/AnalyticsLineChart'
 import { EquipmentPerformanceTable } from '../../components/manager/EquipmentPerformanceTable'
+import { ManagerDateRangeControl } from '../../components/manager/ManagerDateRangeControl'
 import {
   managerService,
+  normalizeManagerAnalyticsRange,
   type ManagerComplianceAnalytics,
 } from '../../services/managerService'
 
 export function ManagerCompliancePage() {
   const [analytics, setAnalytics] = useState<ManagerComplianceAnalytics | null>(null)
   const [error, setError] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const range = normalizeManagerAnalyticsRange(searchParams.get('range'))
 
   useEffect(() => {
     let active = true
+    setError('')
     void managerService
-      .getComplianceAnalytics()
+      .getComplianceAnalytics(range)
       .then((nextAnalytics) => {
         if (active) setAnalytics(nextAnalytics)
       })
@@ -30,11 +36,22 @@ export function ManagerCompliancePage() {
     return () => {
       active = false
     }
-  }, [])
+  }, [range])
+
+  function updateRange(nextRange: typeof range) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.set('range', nextRange)
+      return next
+    })
+  }
 
   return (
     <div className="space-y-7">
       <PageHeader eyebrow="Management visibility" title="Compliance" description="Inspection performance and compliance visibility across the fleet." />
+      <div className="flex justify-end">
+        <ManagerDateRangeControl value={range} onChange={updateRange} />
+      </div>
       {!analytics && !error ? <LoadingState label="Loading pass-rate visibility…" /> : null}
       {error ? <Card><EmptyState icon={ClipboardCheck} title="Unable to load pass rate" description={error} /></Card> : null}
       {analytics ? (
@@ -49,7 +66,7 @@ export function ManagerCompliancePage() {
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
             <Card className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Pass Rate Trend</h2>
-              <p className="mt-1 text-sm text-slate-500">Monthly performance across the seeded historical period.</p>
+              <p className="mt-1 text-sm text-slate-500">Monthly performance across the selected reporting period.</p>
               {analytics.trend.length === 0 ? (
                 <EmptyState icon={ClipboardCheck} title="No pass-rate history" description="No completed inspections are available for pass-rate calculation." />
               ) : (
@@ -76,7 +93,7 @@ export function ManagerCompliancePage() {
 
             <Card className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Inspection Volume</h2>
-              <p className="mt-1 text-sm text-slate-500">Completed inspections by month.</p>
+              <p className="mt-1 text-sm text-slate-500">Completed inspections by month in the selected period.</p>
               {analytics.trend.length === 0 ? (
                 <EmptyState icon={ChartNoAxesCombined} title="No inspection volume" description="Inspection volume will appear after completed inspections are submitted." />
               ) : (
@@ -101,7 +118,7 @@ export function ManagerCompliancePage() {
           <Card className="overflow-hidden">
             <div className="border-b border-slate-200 p-5 sm:p-6">
               <h2 className="text-xl font-bold text-slate-950">Pass Rate by Equipment Type</h2>
-              <p className="mt-1 text-sm text-slate-500">Performance calculated from completed inspections associated with each fleet type.</p>
+              <p className="mt-1 text-sm text-slate-500">Selected-period performance calculated for each fleet type.</p>
             </div>
             {analytics.inspectionCount === 0 ? (
               <EmptyState icon={ClipboardCheck} title="No equipment-type pass rate" description="No completed inspection data is available for an equipment-type breakdown." />

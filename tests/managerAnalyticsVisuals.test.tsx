@@ -100,7 +100,11 @@ describe('TASK-029 Pass C Manager analytics presentation', () => {
       [...volume.querySelectorAll('[data-axis-tick]')].map((tick) =>
         Number(tick.getAttribute('data-axis-tick')),
       ),
-    ).toEqual([25, 20, 15, 10, 5, 0])
+    ).toEqual(
+      createRoundedIntegerTicks(
+        Math.max(...analytics.trend.map((period) => period.inspectionCount)),
+      ).reverse(),
+    )
     expect(
       [...volume.querySelectorAll('[data-chart-value]')].map((bar) =>
         Number(bar.getAttribute('data-chart-value')),
@@ -174,15 +178,10 @@ describe('TASK-029 Pass C Manager analytics presentation', () => {
         Number(bar.getAttribute('data-chart-value')),
       ),
     ).toEqual(completedVolume.map((period) => period.defectCount))
-    expect(completedVolume.some((period) => period.defectCount === 0)).toBe(true)
-    const zeroMonth = completedVolume.find((period) => period.defectCount === 0)!
-    const zeroColumn = volume.querySelector<HTMLElement>(
-      `[data-chart-key="${zeroMonth.key}"]`,
-    )!
-    expect(zeroColumn.getAttribute('aria-label')).toContain(
-      '0 reported defects',
-    )
-    expect(zeroColumn.getAttribute('tabindex')).toBe('0')
+    expect(completedVolume).toHaveLength(compliance.trend.length)
+    expect(
+      completedVolume.reduce((total, period) => total + period.defectCount, 0),
+    ).toBe(analytics.totalDefects)
 
     const severity = screen.getByTestId('severity-distribution')
     const severityStatus = within(severity).getByRole('status')

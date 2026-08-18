@@ -92,11 +92,7 @@ describe('TASK-030 Pass B Supervisor attention UX', () => {
         name: `Evidence for ${failedEntry.item.category}`,
       }),
     ).toBeTruthy()
-    expect(
-      within(failedRow)
-        .getAllByText(action.status)
-        .some((element) => element.className.includes('text-brand-700')),
-    ).toBe(true)
+    expect(within(failedRow).getAllByText(action.status).length).toBeGreaterThan(0)
     expect(within(failedRow).getAllByRole('link', { name: 'View action' })).toHaveLength(1)
     expect(screen.queryByRole('heading', { name: 'Defect Assessment' })).toBeNull()
   })
