@@ -1,76 +1,194 @@
 # FieldSafe
 
-FieldSafe is a static React prototype foundation for field inspection and equipment safety experiences.
+FieldSafe is a role-based equipment inspection and safety operations prototype covering inspection capture, supervisory review, corrective-action tracking, management visibility, and public equipment safety status.
 
-## Current scope
+## What the prototype demonstrates
 
-The application currently includes its visual foundation, typed operational domain data, deterministic demo records, repository contracts, device-local browser persistence, simulated role-based authentication, the end-to-end Inspector inspection workflow, simulated offline submission and synchronization, Supervisor review, corrective-action, and verified defect-resolution workflows, read-only Manager visibility, and the public Gate Check experience. It intentionally contains no production authentication, production scanning or camera capture, production offline infrastructure, backend/API integration, or Technician application.
+### Inspector
 
-## Architecture direction
+- A user-scoped queue of assigned inspections with overdue and upcoming work.
+- Simulated equipment identification followed by an equipment-specific checklist.
+- Pass/Fail responses with defect description, Minor/Major/Critical severity, and simulated photo evidence.
+- Browser-persisted drafts, review and signature acknowledgement, online submission, and simulated offline submission/sync.
+- Inspection history with read-only completed records.
+- Persistent assignment, sync-completion, and revision notifications plus transient action feedback.
+- A revision workflow when a Supervisor returns a submitted inspection with a reason.
 
-Future application behavior should follow this dependency direction:
+### Supervisor
+
+- Prioritized pending reviews backed by the same submitted inspection records used by Inspectors.
+- Explicit Approve or Return for Revision decisions, including a mandatory reason and preserved revision audit history.
+- Corrective-action creation, Technician assignment, due dates, and Open/In Progress/Done tracking.
+- Simulated closure evidence required for new transitions to Done.
+- A separate Verify & Resolve safety-control step after corrective work is complete.
+- Actionable notifications for newly submitted failed inspections.
+
+### Manager
+
+- A read-only operational overview and fleet status board.
+- Compliance visibility based on inspection pass rate, trend, volume, and equipment-type performance.
+- Defect analytics covering volume, severity, lifecycle, and common categories.
+- URL-backed 30D, 90D, 6M, and All date-range presets.
+- Safety-state and unresolved-severity drill-throughs into filtered equipment views.
+- Equipment-level inspection history and current risk/remediation context.
+
+### Gate
+
+- A public, authentication-free equipment safety lookup.
+- Simulated equipment selection with an Allowed, Restricted, or Denied decision derived from the shared canonical equipment state.
+
+## Core lifecycle
+
+The submitted inspection review path is:
 
 ```text
-UI → service/domain logic → repository contracts → browser-storage adapters
+Assigned → Draft / In Progress → Submitted → Pending Review → Approved
 ```
 
-- Pages and UI components call services or repository contracts, never browser storage directly.
-- Domain types and rules should remain independent of React and storage details.
-- Repository contracts live separately from their browser-storage implementation.
-- Deterministic seed data enters through the repository boundary rather than component imports.
-- Operational data is stored under the versioned `fieldsafe:operational-data:v1` key. Reset replaces only that dataset.
-- Session data is stored independently under `fieldsafe:session:v1` and contains only the active seeded user ID.
-- Central route guards redirect an unauthorized authenticated user to their own role landing page.
+The revision path is:
 
-## Data locations
+```text
+Pending Review → Revision Required → Inspector Revision
+               → Resubmitted → Pending Review → Approved
+```
 
-- `src/domain` — framework-independent models and safety-state helpers
-- `src/data/seed` — deterministic demo dataset factory
-- `src/repositories` — asynchronous repository contract and browser implementation
-- `src/storage` — JSON browser-storage adapter and storage-driver boundary
-- `src/services` — application initialization and demo reset entry points
-- `src/auth` — demo credentials, authentication service, session store, context, and route guards
-- `src/services/inspectionService.ts` — Inspector queue, draft validation, domain orchestration, and atomic submission
-- `src/components/inspection` — reusable work-card, checklist, defect, evidence, progress, and signature components
+Resubmission continues the **same inspection lifecycle**. It updates the existing inspection and associated defect records rather than creating another inspection or duplicating defects. Clean all-pass inspections are completed and visible to the Supervisor without entering the failed-inspection review queue.
 
-## Demo authentication
+Corrective actions and defects deliberately use separate lifecycles:
 
-Interactive seeded users can sign in from `/login` with the shared password `demo123`. The two Inspectors, Supervisor, and Manager are available in the on-screen Demo Accounts list. The seeded Technician remains a supporting data actor and cannot sign in to an application workspace.
+```text
+Corrective Action: Open → In Progress → Done
+Defect:             Unresolved → Resolved
+```
 
-Logout clears only `fieldsafe:session:v1`; operational data is preserved. Resetting operational demo data does not clear a valid session because deterministic user IDs remain stable.
+Corrective Action **Done** means the assigned work is complete. It does **not** automatically mean the defect is **Resolved** or the equipment is safe to return to service. A Supervisor must separately use **Verify & Resolve** after confirming the remediation.
 
-## Inspector workflow
+## Safety-state derivation
 
-Each Inspector has two deterministic assigned inspections. Starting an assignment proceeds through simulated scan, repository-resolved equipment confirmation, its equipment-specific checklist, progressive defect capture, review, signature, submission, and a persisted result. Inspector History shows completed records for the active Inspector.
+Equipment safety state is calculated from unresolved defects rather than manually assigned by a screen:
 
-In-progress responses, defect details, evidence references, and normalized signature strokes are persisted as operational inspection drafts. Submission validates the draft, calculates PASS/FAIL, creates relational checklist responses and defects, derives equipment state through the canonical safety helper, and commits the records in one repository write. The operational storage schema migrates existing version-one data in place while retaining the established `fieldsafe:operational-data:v1` storage key.
+| Highest unresolved severity | Equipment state | Gate decision |
+| --- | --- | --- |
+| None or Minor only | Fit | Allowed |
+| Major | Restricted | Restricted |
+| Critical | Out of Service | Denied |
 
-Photo evidence is simulated with the project-local `/evidence/hydraulic-hose-damage.png` asset. Operational storage contains only its small reference object, never image bytes.
+If several unresolved defects exist, the most severe unresolved defect determines the equipment state. Manager and Gate views consume this same derived state.
 
-## Simulated offline behavior
+## Demo data
 
-The Inspector header provides a deterministic Online/Offline demo toggle. Drafts and completed inspections continue to use the existing browser repository while Offline. An offline submission is persisted as `PENDING_SYNC`; returning Online presents a simulated syncing transition and persists the inspection as `SYNCED`. This prototype behavior does not use network detection, a service worker, IndexedDB, background sync, or a backend.
+Demo Reset installs a deterministic operational baseline containing:
 
-## Supervisor remediation lifecycle
+- Two Inspector personas with six actionable assignments each.
+- A mix of overdue, due-soon, and future assignments.
+- Approximately 80 completed inspections distributed across six months, with varied Pass/Fail outcomes.
+- Minor, Major, and Critical defects in resolved and unresolved states.
+- Corrective actions across Open, In Progress, and Done states, with varied due dates.
+- Fit, Restricted, and Out-of-Service equipment for all Gate decisions and Manager filters.
 
-Inspection review, corrective work, and defect resolution remain separate persisted lifecycles. Marking a corrective action `Done` records only that its work is complete. An active Supervisor must explicitly verify the completed remediation before the originating defect becomes `Resolved`. That atomic resolution records its timestamp and Supervisor, then recalculates equipment safety from every remaining unresolved defect through the canonical safety helper. Reviewed inspections remain available for later corrective-action assignment when acknowledgement occurred before remediation planning.
+Operational dates are generated relative to a single demo reference time. This keeps the baseline reproducible for that reference while preventing active work from permanently aging into an all-overdue dataset.
 
-## Scripts
+**Reset Demo Data** is available from the Inspector Profile demo controls. It replaces operational changes, drafts, sync state, and notification state with the deterministic baseline while retaining the current authenticated session.
 
-- `npm run dev` — start the Vite development server
-- `npm run lint` — run ESLint
-- `npm test` — validate seed consistency and persistence behavior
-- `npm run build` — type-check and create the production build
-- `npm run preview` — preview the production build
+## Architecture
 
-## Netlify deployment
+FieldSafe uses React, TypeScript, Vite, React Router, Tailwind CSS, and Lucide React.
 
-FieldSafe deploys as a static Vite single-page application. The repository-level `netlify.toml` defines the complete Netlify configuration:
+```text
+UI
+↓
+services / domain logic
+↓
+repository abstraction
+↓
+browser-backed persistence
+```
 
-- Build command: `npm run build`
-- Publish directory: `dist`
-- SPA fallback: all unmatched paths rewrite to `/index.html` with a `200` response
+React pages and components do not directly access browser storage. They call services and repository contracts, while storage adapters own serialization and persistence. The assignment permits mocked persistence; keeping this boundary explicit makes the browser repository replaceable with an API/backend implementation without embedding storage behavior throughout the UI.
 
-The fallback allows BrowserRouter routes such as `/login`, `/inspector/profile`, `/supervisor/reviews`, `/manager/equipment/:id`, and `/gate` to load or refresh directly without returning a Netlify 404. Files in `public`, including `/evidence/hydraulic-hose-damage.png`, are copied into the production output by Vite.
+Operational state and authentication session state are stored separately:
 
-No deployment environment variables, backend services, or Netlify Functions are required. Operational data and the active demo session remain in browser `localStorage`; they are specific to the deployed origin and browser, so local development data does not transfer to a Netlify deployment.
+- `fieldsafe:operational-data:v1` — equipment, inspections, drafts, responses, defects, corrective actions, connectivity, and notifications.
+- `fieldsafe:session:v1` — the active deterministic demo-user session.
+
+## Persistence & offline simulation
+
+Operational changes persist in browser `localStorage` through the repository/storage abstraction. Refreshing or signing out and back in reconstructs the stored application state for that browser and origin.
+
+The Inspector can toggle deterministic simulated connectivity between Online and Offline. While Offline, drafts, defect data, evidence references, signatures, and completed submissions continue to use the browser repository. An offline submission is marked pending sync; returning Online simulates syncing, persists the Synced state, and creates the accepted sync feedback/notification.
+
+This demonstrates the offline product workflow. It is not production distributed synchronization: there is no service worker, background sync, multi-device conflict resolution, or server acknowledgement.
+
+## Assumptions and deliberate constraints
+
+- Persistence is intentionally browser-local for this prototype.
+- QR scanning and equipment identification are simulated; no camera or QR library is used.
+- Evidence capture uses bundled local demo references rather than uploads or production object storage.
+- Authentication uses deterministic demo identities and role guards rather than a production identity provider.
+- The Manager persona is intentionally read-only.
+- Manager notifications were deliberately omitted because the implemented prototype has no sufficiently interrupt-worthy Manager event; Manager awareness remains dashboard-driven.
+- Rich activity feeds, pagination, copy/permalink controls, equipment/checklist versioning, and advanced rejection/revision analytics remain future-scope enhancements.
+- Offline behavior demonstrates continuity of the inspection workflow, not production conflict resolution across devices.
+- The seeded Technician is an assignable corrective-action owner, not an interactive application persona.
+
+## Running locally
+
+Prerequisite: a current Node.js/npm environment.
+
+```bash
+npm install
+npm run dev
+```
+
+Available repository commands:
+
+```bash
+npm test          # run the Vitest suite
+npm run lint      # run ESLint
+npm run build     # run the TypeScript build and create the Vite production bundle
+npm run preview   # preview the production bundle after building
+```
+
+## Demo accounts
+
+Interactive accounts use the shared password `demo123`.
+
+| Name | Role | Email | Interactive workspace |
+| --- | --- | --- | --- |
+| Arjun Nair | Inspector | `arjun.nair@fieldsafe.demo` | Yes |
+| Neha Patel | Inspector | `neha.patel@fieldsafe.demo` | Yes |
+| Priya Sharma | Supervisor | `priya.sharma@fieldsafe.demo` | Yes |
+| Varun Mehta | Manager | `varun.mehta@fieldsafe.demo` | Yes |
+| Ravi Kumar | Technician | `ravi.kumar@fieldsafe.demo` | No — assignment owner only |
+
+The public Gate Check at `/gate` requires no account.
+
+## Validation
+
+The repository includes quality gates for:
+
+- Automated domain, service, repository, routing, UI, persistence, and cross-persona workflows with Vitest and Testing Library.
+- TypeScript project compilation as part of the production build.
+- ESLint validation.
+- Vite production bundling.
+- A storage-boundary test that prevents React pages and components from directly accessing `localStorage`, `sessionStorage`, or IndexedDB.
+
+## Future production considerations
+
+- Backend/API persistence and durable audit storage.
+- Production authentication, authorization, and identity lifecycle management.
+- Real QR scanning, camera capture, and durable evidence/object storage.
+- Conflict-aware, multi-device offline synchronization.
+- Configurable and versioned checklists and equipment records.
+- Richer operational analytics and rejection/revision reporting.
+- Pagination and server-side querying for larger datasets.
+- Audit export, formal reports, and integration interfaces.
+
+## Design principles
+
+- Derive safety state; do not manually override it in persona screens.
+- Preserve inspection, review, defect, and remediation auditability.
+- Separate corrective-work completion from verified safety resolution.
+- Prioritize field usability and safe failure behavior.
+- Surface actionable information according to persona responsibilities.
+- Keep mocked infrastructure behind replaceable architectural boundaries.
